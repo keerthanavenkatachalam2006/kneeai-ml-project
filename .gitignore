@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# ---------------------------------------------------------------------------
+# PATIENT DATA — never commit.
+# Any imaging, mask, mesh or report artefact is treated as patient data until
+# proven otherwise.
+# ---------------------------------------------------------------------------
+data/raw/**
+data/interim/**
+data/processed/**
+data/external_test/**
+data/manifests/*.jsonl
+artifacts/
+runs/
+mlruns/
+checkpoints/
+*.dcm
+*.nii
+*.nii.gz
+*.mha
+*.mhd
+*.nrrd
+
+# Keep directory structure + registries (these hold no patient data)
+!data/**/.gitkeep
+!data/registry/**
+!data/splits/**
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Notebook noise
+.ipynb_checkpoints/

@@ -1,0 +1,142 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knee-intelligence"
+version = "0.1.0"
+description = "Patient-specific knee intelligence, surgical planning and robotic-assistance platform"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = { text = "Proprietary" }
+authors = [{ name = "Knee Intelligence Engineering" }]
+
+# ---------------------------------------------------------------------------
+# Core runtime dependencies.
+#
+# Deliberately excludes torch / monai / nnunet. Model training runs on Google
+# Colab (see notebooks/) and the deterministic planning core must remain
+# installable on a laptop without a CUDA toolchain.
+# ---------------------------------------------------------------------------
+dependencies = [
+    "numpy>=1.24,<3",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "PyYAML>=6.0",
+    "typer>=0.9",
+    "rich>=13.0",
+    "trimesh>=4.0",
+    # Polygon triangulation backend for trimesh. Needed to extrude implant
+    # footprints into solids for simulation; trimesh ships no triangulator itself
+    # and its other options are GPL or non-free.
+    "mapbox-earcut>=1.0",
+    # Spatial index used by trimesh when capping a sliced mesh (it has to work out
+    # how the cut cross-section's rings nest). Without it, capped slicing fails.
+    "rtree>=1.0",
+    "shapely>=2.0",
+    "scikit-image>=0.21",
+    "networkx>=3.0",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+
+# DICOM / medical image IO. Kept separate because SimpleITK wheels lag new
+# CPython releases.
+imaging = [
+    "pydicom>=2.4",
+    "SimpleITK>=2.3",
+    "nibabel>=5.1",
+]
+
+# Backend API + persistence.
+api = [
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "SQLAlchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "redis>=5.0",
+    "python-multipart>=0.0.9",
+    "passlib[bcrypt]>=1.7",
+    "pyjwt>=2.8",
+]
+
+# Deep learning. Installed inside Colab, not required locally.
+ml = [
+    "torch>=2.1",
+    "monai>=1.3",
+    "einops>=0.7",
+    "scikit-learn>=1.3",
+    "tensorboard>=2.15",
+    "mlflow>=2.10",
+    "tqdm>=4.66",
+]
+
+# Optional heavier 3D stack. The core reconstruction path only needs
+# scikit-image + trimesh.
+viz = [
+    "pyvista>=0.43",
+    "vtk>=9.3",
+    "open3d>=0.18; python_version < '3.12'",
+    "matplotlib>=3.8",
+]
+
+reporting = [
+    "jinja2>=3.1",
+    "weasyprint>=60.0",
+]
+
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.8",
+    "httpx>=0.26",
+    "ipykernel>=6.29",
+    "nbformat>=5.9",
+]
+
+all = [
+    "knee-intelligence[imaging,api,viz,reporting,dev]",
+]
+
+[project.scripts]
+kneeai = "kneeai.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+kneeai = ["py.typed", "resources/**/*.json", "resources/**/*.yaml", "resources/**/*.csv"]
+
+# ---------------------------------------------------------------------------
+# Tooling
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "imaging: requires the imaging extra (pydicom / SimpleITK)",
+    "ml: requires the ml extra (torch / monai)",
+    "slow: long running test",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["B008", "RUF012"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["kneeai"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = false

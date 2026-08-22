@@ -1,0 +1,61 @@
+# Local development infrastructure.
+#
+# No AWS dependency (PRD §120). Everything here runs on a workstation or an
+# on-premise hospital server.
+#
+# NOTE: these credentials are for local development only. Production deployment
+# must supply secrets via the environment and enable TLS on every listener.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kneeai-postgres
+    environment:
+      POSTGRES_USER: kneeai
+      POSTGRES_PASSWORD: kneeai_dev_only
+      POSTGRES_DB: kneeai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kneeai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: kneeai-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # DICOM store. Bound to localhost only — a DICOM listener exposed on a
+  # hospital network without authentication is a real risk (PRD §82).
+  orthanc:
+    image: orthancteam/orthanc:24.5.1
+    container_name: kneeai-orthanc
+    environment:
+      ORTHANC__NAME: KneeAI-Dev
+      ORTHANC__REGISTERED_USERS: |
+        {"kneeai": "kneeai_dev_only"}
+      ORTHANC__DICOM_WEB__ENABLE: "true"
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8042:8042"   # REST / DICOMweb
+      - "127.0.0.1:4242:4242"   # DICOM protocol
+    volumes:
+      - orthancdata:/var/lib/orthanc/db
+
+volumes:
+  pgdata:
+  redisdata:
+  orthancdata:

@@ -71,6 +71,8 @@ ARTIFACTS: dict[str, str] = {
     "mesh_quality": "mesh_quality.json",
     "robot_plan": "robot_plan.json",
     "robot_commands": "robot_commands.json",
+    "oa": "oa.json",
+    "robotic_readiness": "robotic_readiness.json",
 }
 
 DISCLAIMER = (
@@ -169,6 +171,24 @@ def _cohort_record(case_id: str) -> dict[str, Any] | None:
                 ),
             }
     return None
+
+
+def _headline(path: Path, keys: tuple[str, ...]) -> dict[str, Any] | None:
+    """A few named fields from an optional artifact, or ``None``.
+
+    Used by the case list, which wants the OA verdict and readiness percentage per
+    case but not the several kilobytes of reasoning behind each. Never raises: an
+    artifact that is missing or malformed is simply absent from the listing.
+    """
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return {key: payload.get(key) for key in keys}
 
 
 def _read_json(path: Path) -> Any:
@@ -302,6 +322,15 @@ def list_cases() -> dict[str, Any]:
                 badge = ArtifactSource(source).badge
             except ValueError:
                 badge = source.upper()
+
+            # The headline answers, so the case selector can show them without a
+            # round trip per case. Read defensively: a case written before these
+            # existed simply has none.
+            oa_summary = _headline(directory / "oa.json", ("available", "oa_detected", "probability", "severity"))
+            readiness_summary = _headline(
+                directory / "robotic_readiness.json", ("percentage", "band", "n_blockers")
+            )
+
             seen[directory.name] = {
                 "case_id": result.get("case_id", directory.name),
                 "source": source,
@@ -320,6 +349,8 @@ def list_cases() -> dict[str, Any]:
                 "has_simulation": (directory / "simulation.json").exists(),
                 "n_warnings": len(result.get("warnings", []) or []),
                 "modified": result_file.stat().st_mtime,
+                "oa": oa_summary,
+                "readiness": readiness_summary,
             }
     cases = sorted(seen.values(), key=lambda c: c["modified"], reverse=True)
     return {"n_cases": len(cases), "cases": cases}
@@ -359,6 +390,8 @@ def case_summary(case_id: str) -> dict[str, Any]:
         "plan": optional("plan"),
         "simulation": optional("simulation"),
         "mesh_quality": optional("mesh_quality"),
+        "oa": optional("oa"),
+        "readiness": optional("robotic_readiness"),
         "meshes": (
             _read_json(directory / "meshes" / "manifest.json")
             if (directory / "meshes" / "manifest.json").exists()

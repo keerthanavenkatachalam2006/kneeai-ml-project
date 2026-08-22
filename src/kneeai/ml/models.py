@@ -87,6 +87,22 @@ class ModelConfig:
     features: tuple[int, ...] = (32, 64, 128, 256, 320)
     dropout: float = 0.0
 
+    #: Normalisation layer, recorded per model rather than hardcoded.
+    #:
+    #: This matters more than it looks. MONAI's ``SegResNet`` defaults to
+    #: ``GroupNorm(8)``, which carries affine weight and bias per channel;
+    #: PyTorch's ``InstanceNorm3d`` defaults to ``affine=False`` and carries
+    #: neither. A checkpoint trained under one does not load into the other, and
+    #: because the affine tensors are the *only* difference the failure surfaces
+    #: as a pile of "unexpected" keys rather than a shape error.
+    #:
+    #: ``"instance"`` is the platform's historical default and is kept so existing
+    #: checkpoints keep loading.
+    norm: str = "instance"
+
+    #: Group count for ``norm="group"``. Ignored otherwise.
+    norm_groups: int = 8
+
     # --- transformer-specific ---
     hidden_size: int = 768
     mlp_dim: int = 3072
@@ -121,6 +137,27 @@ class ModelConfig:
         payload["architecture"] = self.architecture.value
         return payload
 
+    def resolved_norm(self) -> Any:
+        """The normalisation argument in the form MONAI's layer factory expects.
+
+        Kept as a plain name plus an integer on the dataclass rather than a
+        ``(name, kwargs)`` tuple so it survives a JSON round trip through a
+        checkpoint's ``model_config`` without turning into a list.
+        """
+        name = str(self.norm).lower()
+        if name in ("group", "groupnorm"):
+            return ("group", {"num_groups": int(self.norm_groups)})
+        if name in ("instance_affine", "instance-affine"):
+            return ("instance", {"affine": True})
+        if name in ("batch", "batchnorm"):
+            return "batch"
+        if name in ("instance", "instancenorm"):
+            return "instance"
+        raise ConfigurationError(
+            f"unknown norm {self.norm!r}; choose from "
+            "'instance', 'instance_affine', 'group', 'batch'"
+        )
+
 
 def build_model(config: ModelConfig) -> Any:
     """Instantiate the configured architecture."""
@@ -151,7 +188,7 @@ def build_model(config: ModelConfig) -> Any:
             strides=(2,) * (n_levels - 1),
             num_res_units=2,
             dropout=config.dropout,
-            norm="instance",
+            norm=config.resolved_norm(),
         )
 
     if arch is Architecture.SEGRESNET:
@@ -165,7 +202,7 @@ def build_model(config: ModelConfig) -> Any:
             blocks_down=(1, 2, 2, 4),
             blocks_up=(1, 1, 1),
             dropout_prob=config.dropout or None,
-            norm="instance",
+            norm=config.resolved_norm(),
         )
 
     if arch is Architecture.ATTENTION_UNET:

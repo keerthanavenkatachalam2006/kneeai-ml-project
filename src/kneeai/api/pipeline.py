@@ -92,6 +92,14 @@ class CaseArtifacts:
     warnings: list[str] = field(default_factory=list)
     timings_s: dict[str, float] = field(default_factory=dict)
 
+    #: Serialised :class:`kneeai.oa.OaAssessment`. ``None`` when the OA stage
+    #: could not run at all, which is distinct from an assessment that ran and
+    #: reported itself unavailable.
+    oa_assessment: dict[str, Any] | None = None
+
+    #: Serialised :class:`kneeai.robotics.readiness.RoboticReadiness`.
+    readiness: dict[str, Any] | None = None
+
     @property
     def side(self) -> Side:
         return self.mask.side if self.mask is not None else Side.UNKNOWN
@@ -119,6 +127,8 @@ class CaseArtifacts:
             "simulation": self.case_dir / "simulation.json",
             "kinematics": self.case_dir / "kinematics.json",
             "optimization": self.case_dir / "optimization.json",
+            "oa": self.case_dir / "oa.json",
+            "robotic_readiness": self.case_dir / "robotic_readiness.json",
         }
         return {name: path for name, path in candidates.items() if path.exists()}
 
@@ -138,6 +148,35 @@ def _dedupe(items: list[str]) -> list[str]:
             seen.add(text)
             out.append(text)
     return out
+
+
+def _dataset_kl_grade(case_id: str) -> int | None:
+    """The cohort's recorded Kellgren-Lawrence grade for this case, if any.
+
+    Read from the dataset manifests. Attached to the OA assessment purely so the
+    interface can show the model's prediction beside the dataset's own label; it
+    is never an input to the prediction, and an uploaded scan has none.
+    """
+    try:
+        from kneeai.config import get_settings
+
+        manifests = Path(get_settings().data_root) / "manifests"
+        if not manifests.is_dir():
+            return None
+        for path in sorted(
+            manifests.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
+            try:
+                content = json.loads(path.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            for record in content.get("records", []) or []:
+                if record.get("case_id") == case_id:
+                    grade = record.get("kl_grade")
+                    return int(grade) if grade is not None else None
+    except Exception:  # noqa: BLE001 - cohort metadata is optional context
+        return None
+    return None
 
 
 def _resolve_strategy(name: str) -> Any:
@@ -253,6 +292,35 @@ def run_case_pipeline(
     timings["measure"] = time.perf_counter() - t0
 
     side = cleaned.side if cleaned.side is not Side.UNKNOWN else measurements.side
+
+    # --- 6b. osteoarthritis assessment ------------------------------------
+    # Placed here rather than at the end because it depends only on the mask and
+    # is the question a user asks first. It is also the one stage that must still
+    # produce an answer when the side is unknown and planning is skipped: whether
+    # a knee is arthritic does not depend on knowing which knee it is.
+    opts.stage("assessing osteoarthritis")
+    t0 = time.perf_counter()
+    try:
+        from kneeai.oa import assess_oa
+
+        confidence = {
+            structure.value: value
+            for structure, value in (outcome.confidence or {}).items()
+        }
+        assessment = assess_oa(
+            cleaned,
+            case_id=case_id,
+            dataset_kl_grade=_dataset_kl_grade(case_id),
+            segmentation_confidence=confidence,
+        )
+        artifacts.oa_assessment = assessment.to_dict()
+        if not assessment.available and assessment.unavailable_reason:
+            warnings.append(f"OA assessment unavailable: {assessment.unavailable_reason}")
+        warnings.extend(assessment.warnings)
+    except Exception as exc:  # noqa: BLE001 - OA is additive; it must not fail a case
+        log.warning("OA assessment failed", fields={"error": str(exc)})
+        warnings.append(f"OA assessment could not be computed: {exc}")
+    timings["oa"] = time.perf_counter() - t0
 
     # --- 7-9. implants, plan, simulation ---------------------------------
     resected: dict[Structure, Any] = {}
@@ -371,6 +439,49 @@ def run_case_pipeline(
     artifacts.mesh_manifest = manifest
     timings["meshes"] = time.perf_counter() - t0
 
+    # --- 10b. robotic execution readiness --------------------------------
+    # Last of the computed stages: it scores everything above it, so it can only
+    # run once they have all reported.
+    opts.stage("scoring robotic readiness")
+    t0 = time.perf_counter()
+    try:
+        from kneeai.robotics import build_safety_report
+        from kneeai.robotics.readiness import assess_readiness
+
+        plan_payload = artifacts.plan.to_dict() if artifacts.plan is not None else None
+        simulation_payload = (
+            artifacts.simulation.to_dict() if artifacts.simulation is not None else None
+        )
+        measurements_payload = measurements.to_dict()
+        safety_payload = None
+        if plan_payload is not None:
+            safety_payload = build_safety_report(
+                plan=plan_payload,
+                simulation=simulation_payload,
+                measurements=measurements_payload,
+                source=outcome.source.value,
+            ).to_dict()
+
+        readiness = assess_readiness(
+            result=payload,
+            plan=plan_payload,
+            simulation=simulation_payload,
+            measurements=measurements_payload,
+            implants=(
+                _implants_payload(artifacts.fits) if artifacts.fits else None
+            ),
+            landmarks=landmarks.to_dict(),
+            frame=frame.to_dict(),
+            mesh_quality=meshes.quality_report(),
+            safety_report=safety_payload,
+        )
+        artifacts.readiness = readiness.to_dict()
+        warnings.extend(readiness.warnings)
+    except Exception as exc:  # noqa: BLE001 - readiness is additive, never fatal
+        log.warning("robotic readiness scoring failed", fields={"error": str(exc)})
+        warnings.append(f"Robotic readiness could not be scored: {exc}")
+    timings["readiness"] = time.perf_counter() - t0
+
     # --- 11. derived, application-owned artifacts ------------------------
     opts.stage("writing derived artifacts")
     t0 = time.perf_counter()
@@ -386,6 +497,10 @@ def run_case_pipeline(
         _write_json(case_dir / "simulation.json", artifacts.simulation.to_dict())
     if artifacts.kinematics is not None:
         _write_json(case_dir / "kinematics.json", artifacts.kinematics.to_dict())
+    if artifacts.oa_assessment is not None:
+        _write_json(case_dir / "oa.json", artifacts.oa_assessment)
+    if artifacts.readiness is not None:
+        _write_json(case_dir / "robotic_readiness.json", artifacts.readiness)
     timings["derived"] = time.perf_counter() - t0
 
     # Rewrite result.json so late-stage warnings are in the manifest, not only

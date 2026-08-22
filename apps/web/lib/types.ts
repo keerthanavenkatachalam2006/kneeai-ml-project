@@ -32,6 +32,18 @@ export interface CaseListEntry {
   has_simulation: boolean;
   n_warnings: number;
   modified: number;
+  /** Headline OA verdict, so the selector can show it without a call per case. */
+  oa: {
+    available: boolean | null;
+    oa_detected: boolean | null;
+    probability: number | null;
+    severity: string | null;
+  } | null;
+  readiness: {
+    percentage: number | null;
+    band: string | null;
+    n_blockers: number | null;
+  } | null;
 }
 
 export interface CaseResult {
@@ -288,6 +300,8 @@ export interface CaseSummary {
   simulation: SimulationResult | null;
   mesh_quality: unknown | null;
   meshes: MeshManifest | null;
+  oa: OaAssessment | null;
+  readiness: RoboticReadiness | null;
   contract_valid: boolean;
   contract_errors: string[];
   simulation_state: string;
@@ -295,11 +309,158 @@ export interface CaseSummary {
   disclaimer: string;
   /**
    * Kellgren-Lawrence grade from the dataset's own radiographic reading, when the
-   * cohort supplies one. A label, never a model output — nothing in this platform
-   * predicts it.
+   * cohort supplies one. This is a dataset *label*. It is what the OA classifier
+   * was trained against, and it is never an input to a prediction — so where both
+   * appear, `kl_grade` is the reference and `oa.predicted_kl_grade` is the guess.
    */
   kl_grade?: number | null;
   cohort?: Record<string, unknown> | null;
+}
+
+/**
+ * The OA verdict for a case, from `kneeai.oa`.
+ *
+ * `available: false` is a normal state, not an error: no classifier registered, or
+ * a segmentation too poor to assess. `unavailable_reason` always says which.
+ */
+export interface OaAssessment {
+  available: boolean;
+  case_id: string;
+  oa_detected: boolean | null;
+  probability: number | null;
+  threshold: number;
+  predicted_kl_grade: number | null;
+  severity: "none" | "doubtful" | "mild" | "moderate" | "severe" | null;
+  kl_threshold_for_oa: number;
+  indicators: OaIndicator[];
+  features: {
+    values: Record<string, number>;
+    volumes_mm3: Record<string, number>;
+    full_thickness_loss: string[];
+    segmentation_usable: boolean;
+    notes: string[];
+  };
+  model: Record<string, unknown>;
+  /** Held-out performance of the classifier. Travels with every prediction. */
+  reference_metrics: {
+    validation?: BinaryMetrics;
+    validation_on_predicted_masks?: BinaryMetrics;
+    training?: BinaryMetrics;
+    [key: string]: unknown;
+  };
+  dataset_kl_grade: number | null;
+  unavailable_reason: string | null;
+  warnings: string[];
+  disclaimer: string;
+  method: string;
+}
+
+export interface OaIndicator {
+  name: string;
+  display_name: string;
+  unit: string;
+  value: number | null;
+  imputed: boolean;
+  z_score: number;
+  coefficient: number;
+  log_odds_contribution: number;
+  direction: "towards_oa" | "away_from_oa";
+}
+
+export interface BinaryMetrics {
+  n_cases: number;
+  n_positive: number;
+  threshold: number;
+  accuracy: number;
+  sensitivity: number;
+  specificity: number;
+  precision: number;
+  balanced_accuracy: number;
+  auroc: number;
+  confusion: {
+    true_positive: number;
+    false_positive: number;
+    true_negative: number;
+    false_negative: number;
+  };
+}
+
+/**
+ * Robotic execution readiness, from `kneeai.robotics.readiness`.
+ *
+ * `percentage` is `min(raw_weighted_percentage, ceiling_pct)`. When `capped` is
+ * true a blocker held the score down and the weighted average alone would have
+ * overstated it.
+ */
+export interface RoboticReadiness {
+  percentage: number;
+  band: "ready" | "conditional" | "not_ready";
+  band_note: string;
+  raw_weighted_percentage: number;
+  ceiling_pct: number;
+  capped: boolean;
+  criteria: ReadinessCriterion[];
+  blockers: ReadinessBlocker[];
+  n_blockers: number;
+  warnings: string[];
+  disclaimer: string;
+  method: string;
+}
+
+export interface ReadinessCriterion {
+  name: string;
+  display_name: string;
+  weight: number;
+  score: number;
+  score_pct: number;
+  weighted_contribution_pct: number;
+  detail: string;
+  inputs: Record<string, unknown>;
+}
+
+export interface ReadinessBlocker {
+  code: string;
+  ceiling_pct: number;
+  message: string;
+}
+
+/** One upload's progress. In-memory on the server, so it resets on restart. */
+export interface UploadJob {
+  case_id: string;
+  filename: string;
+  bytes_size: number;
+  side: string;
+  status:
+    | "queued"
+    | "validating"
+    | "segmenting"
+    | "processing"
+    | "complete"
+    | "failed"
+    | "rejected"
+    | "radiograph_only";
+  stage: string;
+  progress: number;
+  terminal: boolean;
+  modality: string | null;
+  validation: Record<string, unknown>;
+  warnings: string[];
+  error: string | null;
+  outcome: {
+    oa_available?: boolean;
+    oa_detected?: boolean | null;
+    oa_probability?: number | null;
+    oa_severity?: string | null;
+    oa_reason?: string | null;
+    readiness_available?: boolean;
+    readiness_pct?: number;
+    readiness_band?: string;
+    readiness_reason?: string;
+    n_blockers?: number;
+  };
+  created_at: number;
+  updated_at: number;
+  elapsed_s: number;
 }
 
 export interface ModelInfo {

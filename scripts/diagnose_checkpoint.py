@@ -94,6 +94,66 @@ def confusion(truth: np.ndarray, pred: np.ndarray) -> None:
         print(f"  truth {NAMES[t]:>14s} -> pred {NAMES[best]:>14s} ({share:.1f}%){flag}")
 
 
+def _mean_dice(truth: np.ndarray, pred: np.ndarray) -> float:
+    scores = []
+    for value in range(1, N):
+        t = truth == value
+        p = pred == value
+        denom = int(t.sum()) + int(p.sum())
+        if denom:
+            scores.append(2.0 * float(np.logical_and(t, p).sum()) / denom)
+    return float(np.mean(scores)) if scores else float("nan")
+
+
+def _flip_search(truth: np.ndarray, pred: np.ndarray) -> None:
+    """Score the prediction against every axis flip of the ground truth.
+
+    The point is to separate "the model is bad" from "the model is good and the
+    axes disagree". An orientation mismatch between training and inference
+    mirrors the volume, which swaps medial for lateral and leaves a moderate Dice
+    that looks like mediocre accuracy. If any flip scores dramatically higher than
+    the identity, the fix is a preprocessing change, not a better model.
+
+    Only shape-preserving transforms are tried, so the axis swap is included only
+    when two axes have equal length.
+    """
+    print("\n--- axis flip / swap search (ground truth transformed, prediction fixed) ---")
+    candidates: list[tuple[str, np.ndarray]] = []
+    for swap in (False, True):
+        if swap and truth.shape[1] != truth.shape[2]:
+            continue
+        base = np.swapaxes(truth, 1, 2) if swap else truth
+        for flips in range(8):
+            axes = [a for a in range(3) if flips & (1 << a)]
+            transformed = np.flip(base, axis=axes) if axes else base
+            label = ("swap12 " if swap else "       ") + (
+                "flip" + "".join(str(a) for a in axes) if axes else "identity"
+            )
+            candidates.append((label, transformed))
+
+    scored = [(label, _mean_dice(t, pred)) for label, t in candidates]
+    scored.sort(key=lambda x: (-x[1] if np.isfinite(x[1]) else 0.0))
+    for label, score in scored:
+        marker = "  <== BEST" if label == scored[0][0] else ""
+        print(f"  {label:24s} mean dice {score:.4f}{marker}")
+
+    best_label, best_score = scored[0]
+    identity = next(s for lbl, s in scored if lbl.strip() == "identity")
+    if best_score > identity + 0.15:
+        print(
+            f"\n  CONCLUSION: '{best_label.strip()}' beats identity by "
+            f"{best_score - identity:.3f} Dice. The preprocessing orientation is "
+            "wrong, not the weights."
+        )
+    else:
+        print(
+            f"\n  CONCLUSION: no flip beats identity meaningfully "
+            f"(best {best_score:.4f} vs identity {identity:.4f}). The axes are "
+            "consistent; the accuracy ceiling is the model or its intensity "
+            "preprocessing."
+        )
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", default="best_model.pth")
@@ -173,6 +233,7 @@ def main() -> None:
     )
     dice_table(truth_on_working, labels, f"working grid ({args.spacing} mm)")
     confusion(truth_on_working, labels)
+    _flip_search(truth_on_working, labels)
 
     print(f"\npredicted label histogram (working grid): "
           f"{np.bincount(labels.ravel(), minlength=N).tolist()}")

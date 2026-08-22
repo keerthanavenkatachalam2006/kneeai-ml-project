@@ -19,10 +19,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ImplantPanel from "@/components/ImplantPanel";
 import MeasurementsPanel from "@/components/MeasurementsPanel";
 import OaPanel from "@/components/OaPanel";
+import ReadinessPanel from "@/components/ReadinessPanel";
 import RobotPanel from "@/components/RobotPanel";
 import Slice2D from "@/components/Slice2D";
 import SourceBadge from "@/components/SourceBadge";
 import Stepper, { type Step } from "@/components/Stepper";
+import UploadPanel from "@/components/UploadPanel";
 import ViewerControls from "@/components/ViewerControls";
 import type { PickInfo, ViewerSettings } from "@/components/Viewer3D";
 import { api, ApiError, fmt } from "@/lib/api";
@@ -32,6 +34,7 @@ import type {
   ModelInfo,
   RobotCommandSequence,
   SimulationStateInfo,
+  UploadJob,
 } from "@/lib/types";
 
 const Viewer3D = dynamic(() => import("@/components/Viewer3D"), {
@@ -75,6 +78,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewerKey, setViewerKey] = useState(0);
+  const [pendingUpload, setPendingUpload] = useState<string | null>(null);
 
   const glRef = useRef<{ gl: any; scene: any; camera: any } | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -92,6 +96,8 @@ export default function Dashboard() {
           list.cases.find((c) => c.has_plan && c.has_meshes) ??
           list.cases[0];
         setCaseId(best?.case_id ?? null);
+        // With nothing on disk, upload is the only useful thing to show.
+        if (!best) setStep("upload");
       } catch (e) {
         if (alive) setError(e instanceof ApiError ? e.message : String(e));
       } finally {
@@ -159,6 +165,29 @@ export default function Dashboard() {
     }));
   }, [step, commands]);
 
+  // An upload creates its case directory before the pipeline finishes, so the case
+  // id is only selected once the job is terminal. Selecting it earlier would fetch a
+  // case whose result.json does not exist yet and show a 404 mid-upload.
+  const handleUploadCreated = useCallback((newCaseId: string) => {
+    setPendingUpload(newCaseId);
+  }, []);
+
+  const handleUploadComplete = useCallback(async (job: UploadJob) => {
+    setPendingUpload(null);
+    try {
+      const list = await api.listCases();
+      setCases(list.cases);
+      if (list.cases.some((c) => c.case_id === job.case_id)) {
+        setCaseId(job.case_id);
+        // Land on the answer the user came for rather than back at the top.
+        setStep(job.outcome?.oa_available ? "oa" : "case");
+      }
+    } catch {
+      // A failed refresh is not worth surfacing: the job panel already shows the
+      // outcome, and the case selector can be reloaded by hand.
+    }
+  }, []);
+
   const animate = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const start = performance.now();
@@ -196,6 +225,14 @@ export default function Dashboard() {
 
   const steps: Step[] = useMemo(
     () => [
+      {
+        id: "upload",
+        label: "Upload scan",
+        hint: "MRI, CT or X-ray",
+        // Always available: it is the entry point, and it must not depend on a
+        // case already being loaded.
+        ready: true,
+      },
       { id: "case", label: "Patient case", hint: "Study, model, provenance", ready: true },
       {
         id: "segment",
@@ -204,10 +241,23 @@ export default function Dashboard() {
         ready: Boolean(summary),
       },
       {
+        id: "oa",
+        label: "OA assessment",
+        hint:
+          summary?.oa?.available && summary.oa.probability != null
+            ? `${summary.oa.oa_detected ? "OA detected" : "No OA"} · ${Math.round(
+                summary.oa.probability * 100,
+              )}%`
+            : "Osteoarthritis: yes or no",
+        ready: Boolean(summary),
+        blockedReason: "Load or upload a case first",
+      },
+      {
         id: "slices",
-        label: "2D slices",
+        label: "3 views",
         hint: "Axial, coronal and sagittal with contours",
         ready: Boolean(summary),
+        blockedReason: "Load or upload a case first",
       },
       {
         id: "anatomy",
@@ -224,18 +274,23 @@ export default function Dashboard() {
         blockedReason: "No measurements for this case",
       },
       {
-        id: "oa",
-        label: "OA analysis",
-        hint: "Cartilage and alignment indicators",
-        ready: Boolean(summary?.measurements),
-        blockedReason: "Requires measurements",
-      },
-      {
         id: "plan",
         label: "Implant & plan",
         hint: `${summary?.plan?.cuts.length ?? 0} resection cuts`,
         ready: Boolean(summary?.plan),
         blockedReason: "No surgical plan for this case",
+      },
+      {
+        id: "readiness",
+        label: "Robotic readiness",
+        hint:
+          summary?.readiness?.percentage != null
+            ? `${Math.round(summary.readiness.percentage)}% · ${(
+                summary.readiness.band ?? ""
+              ).replace(/_/g, " ")}`
+            : "Percentage, with the breakdown",
+        ready: Boolean(summary?.readiness),
+        blockedReason: "Scored at the end of the pipeline; none for this case yet",
       },
       {
         id: "simulate",
@@ -261,6 +316,14 @@ export default function Dashboard() {
           </span>
         </div>
         <div className="flex items-center gap-2.5">
+          {pendingUpload && (
+            <span
+              className="chip border-sky-600 bg-sky-500/15 text-sky-300"
+              title={`Processing upload ${pendingUpload}`}
+            >
+              processing upload…
+            </span>
+          )}
           {summary && <SourceBadge source={summary.source} />}
           <select
             aria-label="Select case"
@@ -289,6 +352,32 @@ export default function Dashboard() {
             Is the API running? <code className="font-mono">make api</code> starts it on
             127.0.0.1:8000.
           </p>
+        </div>
+      )}
+
+      {/* Upload is reachable with no case loaded — it is how the first case gets
+          here, so it cannot be nested inside the `summary` guard below. */}
+      {!summary && step === "upload" && !loading && (
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[1fr_400px]">
+          <section className="flex min-h-[26rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-950">
+            <div className="max-w-md px-6 text-center">
+              <p className="text-[13px] font-medium text-slate-300">
+                Upload a scan to begin
+              </p>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-500">
+                A knee MR volume runs the full pipeline: AI segmentation, 3D
+                reconstruction, measurement, an osteoarthritis assessment, implant
+                matching, a resection plan and a robotic readiness score. The
+                reconstructed knee appears here when it is ready.
+              </p>
+            </div>
+          </section>
+          <aside className="min-h-0 space-y-3 overflow-y-auto pr-0.5">
+            <UploadPanel
+              onCaseCreated={handleUploadCreated}
+              onComplete={handleUploadComplete}
+            />
+          </aside>
         </div>
       )}
 
@@ -664,13 +753,26 @@ export default function Dashboard() {
               </>
             )}
 
+            {step === "upload" && (
+              <UploadPanel
+                onCaseCreated={handleUploadCreated}
+                onComplete={handleUploadComplete}
+              />
+            )}
+
             {step === "slices" && <Slice2D caseId={summary.case_id} />}
 
             {step === "measure" && <MeasurementsPanel data={summary.measurements} />}
 
             {step === "oa" && (
-              <OaPanel data={summary.measurements} klGrade={summary.kl_grade ?? null} />
+              <OaPanel
+                data={summary.measurements}
+                oa={summary.oa}
+                klGrade={summary.kl_grade ?? null}
+              />
             )}
+
+            {step === "readiness" && <ReadinessPanel readiness={summary.readiness} />}
 
             {step === "plan" && (
               <>

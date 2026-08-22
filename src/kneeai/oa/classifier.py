@@ -65,7 +65,13 @@ class LogisticModel:
     #: Training-set medians, used to fill features that could not be computed.
     impute: list[float]
 
-    def _design(self, x: np.ndarray) -> np.ndarray:
+    def design(self, x: np.ndarray) -> np.ndarray:
+        """Impute missing features, then standardise.
+
+        Public because the assessment layer needs the standardised values to
+        decompose a prediction into per-feature contributions, and recomputing the
+        standardisation there would risk the two drifting apart.
+        """
         x = np.atleast_2d(np.asarray(x, dtype=np.float64)).copy()
         impute = np.asarray(self.impute, dtype=np.float64)
         bad = ~np.isfinite(x)
@@ -76,7 +82,7 @@ class LogisticModel:
         return (x - mean) / scale
 
     def decision(self, x: np.ndarray) -> np.ndarray:
-        z = self._design(x) @ np.asarray(self.coefficients, dtype=np.float64)
+        z = self.design(x) @ np.asarray(self.coefficients, dtype=np.float64)
         return z + self.intercept
 
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
@@ -358,6 +364,7 @@ class OaClassifier:
     def grade(self, vector: np.ndarray) -> float:
         if not self.grade_coefficients:
             return float("nan")
-        design = self.binary._design(np.atleast_2d(vector))
-        raw = float(design @ np.asarray(self.grade_coefficients) + self.grade_intercept)
-        return float(np.clip(raw, 0.0, 4.0))
+        design = self.binary.design(np.atleast_2d(vector))
+        # design is (1, n_features), so the product is (1,) rather than a scalar.
+        raw = (design @ np.asarray(self.grade_coefficients, dtype=np.float64))[0]
+        return float(np.clip(raw + self.grade_intercept, 0.0, 4.0))

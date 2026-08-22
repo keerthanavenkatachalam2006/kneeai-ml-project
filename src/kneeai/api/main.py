@@ -31,12 +31,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from kneeai.config import get_settings
+from kneeai.core.anatomy import Modality, Side
 from kneeai.core.errors import GuardrailViolation, KneeAIError
 from kneeai.logging import configure_logging, get_logger
 from kneeai.ml.contract import ArtifactSource, validate_result_json
@@ -403,6 +404,154 @@ def case_summary(case_id: str) -> dict[str, Any]:
         "banner": SIMULATION_ONLY_BANNER,
         "disclaimer": DISCLAIMER,
     }
+
+
+@app.post("/api/upload")
+async def upload_scan(
+    file: UploadFile = File(..., description="NIfTI, DICOM zip, single DICOM, or a 2D radiograph"),
+    side: str = Form("unknown", description="Operative side: left, right or unknown"),
+    case_id: str | None = Form(None, description="Optional; generated when omitted"),
+    modality: str | None = Form(None, description="Optional override: MR, CT, CR, DX"),
+) -> dict[str, Any]:
+    """Accept a scan and start processing it. Returns immediately.
+
+    The response carries the ``case_id`` to poll. Nothing is computed inside this
+    handler: segmentation alone is 30-60 s on CPU, and holding a request open for
+    that long fails badly behind any proxy.
+
+    Note the deliberate asymmetry with the rest of this API — every other endpoint
+    reads artefacts, and this one creates them. It is the only writer of new cases,
+    which is why it is also the only endpoint that validates an operator-supplied
+    ``side``: a wrong side here propagates into the plan as a wrong-site error.
+    """
+    from kneeai.api.upload import (
+        MAX_UPLOAD_BYTES,
+        UploadJob,
+        get_registry,
+        new_case_id,
+        process_upload,
+    )
+
+    try:
+        resolved_side = Side(side.strip().lower()) if side else Side.UNKNOWN
+    except ValueError:
+        raise HTTPException(
+            400, f"side must be one of {[s.value for s in Side]}, got {side!r}"
+        ) from None
+
+    resolved_modality: Modality | None = None
+    if modality:
+        try:
+            resolved_modality = Modality(modality.strip().upper())
+        except ValueError:
+            raise HTTPException(
+                400,
+                f"modality must be one of {[m.value for m in Modality]}, got {modality!r}",
+            ) from None
+
+    cid = _safe_case_id(case_id.strip()) if case_id and case_id.strip() else new_case_id()
+
+    registry = get_registry()
+    if registry.get(cid) is not None:
+        raise HTTPException(409, f"case id {cid!r} is already in use")
+    for base in _case_roots():
+        if (base / cid / "result.json").exists():
+            raise HTTPException(409, f"case id {cid!r} already exists on disk")
+
+    # Uploads land under artifacts/live/, which _case_roots() already searches.
+    live_root = Path(get_settings().artifact_root) / "live"
+    staging = live_root / "uploads" / cid
+    staging.mkdir(parents=True, exist_ok=True)
+
+    filename = Path(file.filename or "upload.bin").name
+    target = staging / filename
+
+    # Stream to disk with a running size check, so an oversized upload is stopped
+    # partway rather than after it has been fully buffered.
+    written = 0
+    try:
+        with target.open("wb") as handle:
+            while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+                if written > MAX_UPLOAD_BYTES:
+                    handle.close()
+                    target.unlink(missing_ok=True)
+                    raise HTTPException(
+                        413,
+                        f"upload exceeds the {MAX_UPLOAD_BYTES // 1_000_000} MB limit",
+                    )
+                handle.write(chunk)
+    finally:
+        await file.close()
+
+    if written == 0:
+        target.unlink(missing_ok=True)
+        raise HTTPException(400, "the uploaded file is empty")
+
+    job = registry.create(
+        UploadJob(
+            case_id=cid,
+            filename=filename,
+            bytes_size=written,
+            side=resolved_side.value,
+        )
+    )
+    registry.submit(
+        cid,
+        process_upload,
+        case_id=cid,
+        original=target,
+        case_root=live_root,
+        side=resolved_side,
+        modality_hint=resolved_modality,
+    )
+
+    log.info(
+        "upload accepted",
+        fields={
+            "case_id": cid,
+            "filename": filename,
+            "bytes": written,
+            "side": resolved_side.value,
+            "queue_depth": registry.queue_depth(),
+        },
+    )
+    return {
+        **job.to_dict(),
+        "queue_depth": registry.queue_depth(),
+        "poll": f"/api/uploads/{cid}",
+        "note": (
+            "Processing runs on a single background worker. Poll the 'poll' URL "
+            "until 'terminal' is true, then load the case."
+        ),
+        "disclaimer": DISCLAIMER,
+    }
+
+
+@app.get("/api/uploads")
+def list_uploads() -> dict[str, Any]:
+    """Every upload this process has seen. In-memory, so it resets on restart."""
+    from kneeai.api.upload import get_registry
+
+    registry = get_registry()
+    jobs = registry.all()
+    return {
+        "n_jobs": len(jobs),
+        "queue_depth": registry.queue_depth(),
+        "jobs": [j.to_dict() for j in jobs],
+    }
+
+
+@app.get("/api/uploads/{case_id}")
+def upload_status(case_id: str) -> dict[str, Any]:
+    """Progress for one upload."""
+    from kneeai.api.upload import get_registry
+
+    cid = _safe_case_id(case_id)
+    job = get_registry().get(cid)
+    if job is None:
+        raise HTTPException(404, f"no upload job for case {cid!r}")
+    return job.to_dict()
 
 
 @app.get("/api/cases/{case_id}/artifacts/{name}")

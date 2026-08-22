@@ -1,0 +1,13 @@
+classifier loaded: True version 0.1.0
+threshold: 0.5
+Traceback (most recent call last):
+  File "/tmp/oatest.py", line 15, in <module>
+    a = assess_oa(mask, case_id="oaizib-417", dataset_kl_grade=0)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/user/Desktop/projects/mr/src/kneeai/oa/assess.py", line 238, in assess_oa
+    grade = model.grade(vector)
+            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/user/Desktop/projects/mr/src/kneeai/oa/classifier.py", line 368, in grade
+    raw = float(design @ np.asarray(self.grade_coefficients) + self.grade_intercept)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: only 0-dimensional arrays can be converted to Python scalars

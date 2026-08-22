@@ -83,6 +83,36 @@ infer: ## Segment + plan one real OAIZIB-CM case with the trained model
 model-card: ## Rebuild the model card from the training history
 	$(BIN)/python scripts/write_model_card.py
 
+# ---------------------------------------------------------------------------
+# The externally supplied checkpoint (best_model.pth)
+# ---------------------------------------------------------------------------
+.PHONY: identify-model
+identify-model: ## Recover an unlabelled checkpoint's config by scoring against ground truth
+	$(BIN)/python scripts/identify_checkpoint.py --cases 417 --spacings 1.0 0.5
+
+.PHONY: diagnose-model
+diagnose-model: ## Confusion matrix + axis-flip search for the active checkpoint
+	$(BIN)/python scripts/diagnose_checkpoint.py --case 417 --spacing 0.5
+
+.PHONY: register-model
+register-model: ## Wrap + register best_model.pth and point the adapter at it
+	$(BIN)/python scripts/register_best_model.py --activate
+
+.PHONY: evaluate-model
+evaluate-model: ## Measure the active model on the held-out val split (slow: ~3 min/case)
+	$(BIN)/python scripts/evaluate_segresnet.py
+
+# ---------------------------------------------------------------------------
+# OA classifier
+# ---------------------------------------------------------------------------
+.PHONY: oa-train
+oa-train: ## Fit the OA classifier on ground-truth masks vs the cohort's KL grades
+	$(BIN)/python scripts/train_oa_classifier.py
+
+.PHONY: oa-train-honest
+oa-train-honest: ## Refit and score on the model's OWN masks (needs evaluate-model first)
+	$(BIN)/python scripts/train_oa_classifier.py --predicted-masks artifacts/val_predictions
+
 .PHONY: notebook
 notebook: ## Regenerate the Colab training notebook
 	$(BIN)/python scripts/make_colab_notebook.py

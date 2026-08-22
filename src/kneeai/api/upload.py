@@ -60,6 +60,16 @@ log = get_logger("api.upload")
 #: disk before checking would be the bug.
 MAX_UPLOAD_BYTES = 1_500_000_000  # 1.5 GB
 
+#: Sliding-window overlap used for uploads, against the 0.5 default.
+#:
+#: This is a real accuracy-for-latency trade and it is made deliberately. On CPU at
+#: 0.5 mm the patch count scales steeply with overlap, and 0.5 puts an upload in the
+#: region of ten minutes against roughly four at 0.25. Batch evaluation
+#: (``scripts/evaluate_segresnet.py``) leaves the default alone, so the numbers on
+#: the model card are not the ones this shortcut produces — a gap worth remembering
+#: when comparing an uploaded case against the card.
+UPLOAD_INFERENCE_OVERLAP = 0.25
+
 _NIFTI_SUFFIXES = (".nii", ".nii.gz")
 _ARCHIVE_SUFFIXES = (".zip",)
 _DICOM_SUFFIXES = (".dcm", ".dicom", ".ima")
@@ -266,6 +276,17 @@ def ingest_upload(
     if modality_hint is not None and volume.modality is not modality_hint:
         volume = replace(volume, modality=modality_hint)
 
+    # A bare NIfTI carries no modality tag, so an untagged upload arrives as
+    # UNKNOWN. That is not a soft detail: the model card's compatibility gate
+    # refuses to run an MR model on an UNKNOWN volume, and rightly so. Since this
+    # platform's only segmentation model is MR and the operator chose to upload
+    # here, the assumption is applied explicitly and recorded loudly rather than
+    # left to fail deep inside the predictor.
+    assumed_modality = False
+    if volume.modality is Modality.UNKNOWN:
+        volume = replace(volume, modality=Modality.MR)
+        assumed_modality = True
+
     report = validate_volume(volume)
     validation = report.to_dict()
     warnings.extend(i.message for i in report.warnings)
@@ -274,6 +295,15 @@ def ingest_upload(
         blocking = "; ".join(i.message for i in report.errors)
         raise ValidationError(
             f"the uploaded volume failed validation and was not processed: {blocking}"
+        )
+
+    if assumed_modality:
+        warnings.append(
+            "The file carries no modality tag, so it was ASSUMED to be MR — the only "
+            "modality this platform's segmentation model is trained for. If this is "
+            "actually a CT, the segmentation is unvalidated cross-modality use and "
+            "its output should not be trusted. Re-upload with the modality set "
+            "explicitly to remove the assumption."
         )
 
     # Written (or rewritten) through write_volume so the sidecar carries the
@@ -285,11 +315,6 @@ def ingest_upload(
             "This is a CT. The segmentation model was trained on 3D DESS MR only; "
             "applying it across modalities is unvalidated and its output should be "
             "treated as unreliable until measured on CT with ground truth."
-        )
-    elif volume.modality is Modality.UNKNOWN:
-        warnings.append(
-            "The modality could not be determined from the file. The MR model will "
-            "be applied; confirm the input really is knee MR."
         )
 
     return IngestedScan(
@@ -355,7 +380,13 @@ class UploadJob:
             "outcome": self.outcome,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "elapsed_s": round(self.updated_at - self.created_at, 1),
+            # Measured against now while the job is live. Segmentation is a single
+            # stage lasting most of the wall clock and it posts no intermediate
+            # updates, so deriving elapsed time from updated_at would freeze the
+            # clock during precisely the part the user is waiting through.
+            "elapsed_s": round(
+                (self.updated_at if self.terminal else time.time()) - self.created_at, 1
+            ),
         }
 
 
@@ -412,20 +443,26 @@ class UploadRegistry:
             job.updated_at = time.time()
 
     # --- submission ---
-    def submit(self, case_id: str, fn: Any, *args: Any, **kwargs: Any) -> None:
+    def submit(self, job_id: str, fn: Any, /, *args: Any, **kwargs: Any) -> None:
+        """Queue work for a job.
+
+        ``job_id`` and ``fn`` are positional-only so that ``kwargs`` intended for
+        ``fn`` — which will normally include its own ``case_id`` — cannot collide
+        with this method's own parameters.
+        """
         future = self._executor.submit(fn, *args, **kwargs)
         with self._lock:
-            self._futures[case_id] = future
+            self._futures[job_id] = future
 
         def _done(f: Future[None]) -> None:
             exc = f.exception()
             if exc is not None:
                 log.error(
                     "upload job raised",
-                    fields={"case_id": case_id, "error": f"{type(exc).__name__}: {exc}"},
+                    fields={"case_id": job_id, "error": f"{type(exc).__name__}: {exc}"},
                 )
                 self.update(
-                    case_id,
+                    job_id,
                     status="failed",
                     stage="failed",
                     progress=1.0,
@@ -525,6 +562,35 @@ def process_upload(
         )
         return
 
+    # The model card declares MR and the compatibility gate enforces it. Checking
+    # here turns a deep ValidationError from inside the predictor into a statement
+    # about the input, which is what the operator can actually act on.
+    if scan.modality is Modality.CT:
+        registry.update(
+            case_id,
+            status="rejected",
+            stage="CT stored; the segmentation model is MR-only",
+            progress=1.0,
+            error=(
+                "This is a CT, and the only registered segmentation model was trained "
+                "on 3D DESS knee MR. Running it on CT is cross-modality use with no "
+                "validation behind it, so the model card's compatibility gate refuses "
+                "it rather than producing a confident, unmeasured mask. The scan has "
+                "been stored and the 2D views are available. To proceed you would need "
+                "a model trained or validated on CT."
+            ),
+            outcome={
+                "oa_available": False,
+                "oa_reason": (
+                    "The OA classifier consumes a segmentation, and no segmentation "
+                    "could be produced for a CT."
+                ),
+                "readiness_available": False,
+                "readiness_reason": "No plan exists, because no segmentation was produced.",
+            },
+        )
+        return
+
     # --- 2. segment ---
     registry.update(
         case_id,
@@ -538,6 +604,9 @@ def process_upload(
         image_path=scan.image_path,
         model_reference="seg_oaizib",
         allow_degradation=not strict,
+        # Interactive path: the user is watching a progress bar. 0.25 overlap is
+        # 2-3x faster on CPU than the 0.5 default for a marginal boundary gain.
+        inference_overlap=UPLOAD_INFERENCE_OVERLAP,
     )
     try:
         outcome = MLInferenceAdapter(config).segment()

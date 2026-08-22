@@ -14,6 +14,7 @@ import type {
   RobotCommandSequence,
   SimulationStateInfo,
   SliceInfo,
+  UploadJob,
 } from "./types";
 
 export class ApiError extends Error {
@@ -28,9 +29,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // FormData must NOT get an explicit Content-Type: the browser has to set it
+  // itself so it can append the multipart boundary. Setting it here produces a
+  // body the server cannot parse, with a 422 that looks like a validation bug.
+  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
+  const headers = isFormData
+    ? (init?.headers ?? {})
+    : { "Content-Type": "application/json", ...(init?.headers ?? {}) };
+
   const response = await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers,
     cache: "no-store",
   });
 
@@ -104,6 +113,32 @@ export const api = {
 
   robotCommands: (caseId: string) =>
     request<RobotCommandSequence>(`/api/cases/${encodeURIComponent(caseId)}/robot/commands`),
+
+  /**
+   * Upload a scan and start processing. Resolves as soon as the file is stored —
+   * segmentation happens on a background worker, so poll `uploadStatus` with the
+   * returned `case_id` until `terminal` is true.
+   */
+  uploadScan: (
+    file: File,
+    options: { side?: string; caseId?: string; modality?: string } = {},
+  ) => {
+    const body = new FormData();
+    body.append("file", file);
+    body.append("side", options.side ?? "unknown");
+    if (options.caseId) body.append("case_id", options.caseId);
+    if (options.modality) body.append("modality", options.modality);
+    return request<UploadJob & { queue_depth: number; poll: string; note: string }>(
+      "/api/upload",
+      { method: "POST", body },
+    );
+  },
+
+  uploadStatus: (caseId: string) =>
+    request<UploadJob>(`/api/uploads/${encodeURIComponent(caseId)}`),
+
+  listUploads: () =>
+    request<{ n_jobs: number; queue_depth: number; jobs: UploadJob[] }>("/api/uploads"),
 };
 
 /** Format a measurement value, or say plainly that it is unavailable. */

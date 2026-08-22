@@ -162,7 +162,7 @@ def _indicators(
     the decision rather than an approximation of it.
     """
     vector = features.vector()
-    standardised = classifier.binary._design(np.atleast_2d(vector))[0]
+    standardised = classifier.binary.design(np.atleast_2d(vector))[0]
     coefficients = np.asarray(classifier.binary.coefficients, dtype=np.float64)
     contributions = coefficients * standardised
 

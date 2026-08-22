@@ -12,9 +12,11 @@ simulates a constrained robotic execution of that plan.
 ## What actually works today
 
 ```
-real knee MRI (OAIZIB-CM)
+uploaded scan (NIfTI / DICOM zip)  or  real knee MRI (OAIZIB-CM)
         ↓
-AI segmentation ......... trained 3D UNet, 5 structures
+ingest + validation ..... modality, spacing, FOV, laterality; 2D X-ray refused
+        ↓                 with a reason rather than silently mishandled
+AI segmentation ......... trained 3D SegResNet / UNet, 5 structures
         ↓
 3D reconstruction ....... watertight meshes, mm units
         ↓
@@ -22,11 +24,15 @@ landmark detection ...... 18 landmarks + patient frame
         ↓
 measurements ............ 26 computed, 13 reported unavailable with reasons
         ↓
+OA assessment ........... trained classifier, KL >= 2, probability + severity
+        ↓                 + per-feature contributions + held-out metrics
 implant matching ........ ranked candidates, runner-up and why it lost
         ↓
 surgical planning ....... 6 resection cuts, approval + locking + versioning
         ↓
 geometric simulation .... virtual cuts, collision, kinematics
+        ↓
+robotic readiness ....... percentage over 6 weighted criteria, blockers cap it
         ↓
 surgeon approval ........ mandatory, named, enforced by raising
         ↓
@@ -35,12 +41,47 @@ robot simulation ........ 27 abstract tool poses, keep-out boundary
 3D viewer ............... Next.js + react-three-fiber
 ```
 
-### Model
+Upload a scan at <http://localhost:3000>, and the answer comes back as: is this
+osteoarthritis, here are the three orthogonal views, and here is how ready the case
+is for a robotic execution of its plan — each with its reasoning attached.
+
+### Models
+
+Two learned components. Everything else is deterministic geometry.
+
+**1. Segmentation.** Two checkpoints are registered; the inference adapter reads
+whichever `artifacts/models/seg_oaizib/model_card.json` points at.
+
+| | `0.1.0-local` | `0.2.0-segresnet` |
+|---|---|---|
+| Architecture | MONAI 3D UNet, 4.81 M params | MONAI SegResNet, 4.70 M params |
+| Provenance | trained here, full record | **supplied as a bare state dict, no record** |
+| Preprocessing | 1.0 mm iso, RAS, z-score | 0.5 mm iso, RAS, z-score — *recovered by measurement* |
+| Mean val Dice | **0.695** | ~0.47 |
+
+`0.2.0-segresnet` is `best_model.pth`. It arrived with no label map, no
+`model_config` and no training log, so its architecture and preprocessing were
+recovered by grid search against ground truth — see `scripts/identify_checkpoint.py`
+and the evidence block in `scripts/register_best_model.py`. GroupNorm(8) vs affine
+InstanceNorm was decided by measurement (0.455 vs 0.127 Dice); both fit the tensor
+shapes identically. It measures **worse** than the model trained here, and its error
+pattern — high recall, inflated volumes, soft boundaries — is that of an undertrained
+network rather than a preprocessing mismatch. All 16 axis flips were checked; none
+beat the identity.
+
+To switch back: `cp artifacts/models/seg_oaizib/model_card.previous.json
+artifacts/models/seg_oaizib/model_card.json`.
+
+**2. OA classification.** `kneeai.oa` — L2-regularised logistic regression on seven
+cartilage-geometry features, fitted to the cohort's own Kellgren-Lawrence grades
+dichotomised at KL ≥ 2. 48 training knees, 12 validation knees, patient-level split
+from the dataset manifest. Its measured held-out performance is attached to every
+prediction it makes and rendered next to the verdict in the interface, because a
+probability from a model fitted to 48 samples should never appear without it.
 
 | | |
 |---|---|
-| Architecture | MONAI 3D UNet, 4.81 M parameters |
-| Trained on | OAIZIB-CM, real OAI knee MRI |
+| Segmentation trained on | OAIZIB-CM, real OAI knee MRI |
 | Split | patient-level, KL-stratified, zero shared patients |
 | Structures | femur, tibia, femoral cartilage, medial + lateral tibial cartilage |
 
@@ -148,6 +189,7 @@ src/kneeai/api/          FastAPI: cases, meshes, approval, simulation
         │
         ├── core/        frames, geometry, units, provenance, case state
         ├── imaging/     DICOM/NIfTI ingest, validation, anonymisation
+        ├── oa/          OA features, classifier, assessment
         ├── recon/       voxel masks -> watertight meshes
         ├── landmarks/   geometric detection + patient frame
         ├── measure/     bone, alignment, soft tissue
@@ -156,9 +198,16 @@ src/kneeai/api/          FastAPI: cases, meshes, approval, simulation
         └── simulation/  virtual cuts, collision, kinematics
 ```
 
-Only **one** component is a learned model. Everything after segmentation is
-deterministic geometry — which is why it needed no training and does not
-hallucinate.
+**Two** components are learned models: segmentation (`ml/`) and OA classification
+(`oa/`). Everything else — reconstruction, landmarks, measurement, implant matching,
+planning, simulation, and the robotic readiness score — is deterministic geometry,
+which is why it needed no training and does not hallucinate.
+
+The readiness percentage is deliberately in that second group. It is a weighted mean
+over six criteria scored from the artefacts, with every weight and sub-score reported
+so the total can be recomputed by hand. Anything that genuinely prevents execution
+imposes a *ceiling* rather than contributing a term, because a weighted average will
+otherwise report a comfortable 78 % for a case whose geometric simulation failed.
 
 ### The ML → application contract
 

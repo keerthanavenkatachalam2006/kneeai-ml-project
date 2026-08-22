@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-950 text-slate-200 antialiased;
+  /* Tabular figures so measurement columns line up down the page. */
+  font-feature-settings: "tnum" 1;
+}
+
+/* Visible focus everywhere — the viewer's controls are all tab-reachable. */
+:focus-visible {
+  @apply outline-none ring-2 ring-sky-500 ring-offset-2 ring-offset-slate-950;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded bg-slate-700;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-600;
+}
+
+@layer components {
+  /* --- surfaces --- */
+  .card {
+    @apply rounded-lg border border-slate-800 bg-slate-900/70;
+  }
+  .card-head {
+    @apply flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-2.5;
+  }
+  .card-title {
+    @apply text-[13px] font-semibold text-slate-100;
+  }
+  .card-sub {
+    @apply text-[11px] text-slate-500;
+  }
+  .card-body {
+    @apply px-4 py-3;
+  }
+
+  /* --- section heading inside a card --- */
+  .section-label {
+    @apply mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+  }
+
+  /* --- data rows --- */
+  .row {
+    @apply flex items-baseline justify-between gap-4 border-b border-slate-800/60 py-1.5 last:border-0;
+  }
+  .row-key {
+    @apply min-w-0 truncate text-[12px] text-slate-400;
+  }
+  .row-val {
+    @apply shrink-0 font-mono text-[12px] tabular-nums text-slate-100;
+  }
+
+  /* --- buttons --- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-[12px]
+           font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn border-sky-500 bg-sky-500 text-white hover:bg-sky-400 hover:border-sky-400;
+  }
+  .btn-ghost {
+    @apply btn border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply btn border-rose-600 bg-rose-600 text-white hover:bg-rose-500;
+  }
+
+  /* --- chips --- */
+  .chip {
+    @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold
+           uppercase tracking-wider;
+  }
+
+  /* --- inputs --- */
+  .field {
+    @apply w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-[12px]
+           text-slate-100 placeholder:text-slate-600 focus:border-sky-500;
+  }
+  .field-label {
+    @apply mb-1 block text-[11px] font-medium text-slate-400;
+  }
+
+  /* --- viewer overlay controls --- */
+  .overlay {
+    @apply rounded-lg border border-slate-700/80 bg-slate-950/85 backdrop-blur;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,2305 @@
+{
+  "dataset_id": "oaizib_cm",
+  "n_cases": 60,
+  "n_patients": 60,
+  "label_map": {
+    "femur": 1,
+    "femoral_cartilage": 2,
+    "tibia": 3,
+    "medial_tibial_cartilage": 4,
+    "lateral_tibial_cartilage": 5
+  },
+  "structures_unavailable": [
+    "medial_meniscus",
+    "lateral_meniscus",
+    "patella",
+    "patellar_cartilage"
+  ],
+  "split_strategy": "patient_level_stratified_by_kl_grade",
+  "seed": 42,
+  "val_fraction": 0.2,
+  "licence": "CC-BY-NC-4.0",
+  "commercial_use": false,
+  "records": [
+    {
+      "case_id": "oaizib-488",
+      "patient_id": "9494867",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_488_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_488.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 60.0,
+      "sex": "male",
+      "bmi": 21.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 488,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9494867/20050719/10425112",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-489",
+      "patient_id": "9495873",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_489_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_489.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 58.0,
+      "sex": "male",
+      "bmi": 26.7,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 489,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9495873/20050627/10568012",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-426",
+      "patient_id": "9504056",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_426_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_426.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 71.0,
+      "sex": "female",
+      "bmi": 22.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 426,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9504056/20051019/10205612",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-427",
+      "patient_id": "9517914",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_427_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_427.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 64.0,
+      "sex": "female",
+      "bmi": 25.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 427,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9517914/20040622/10055010",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-428",
+      "patient_id": "9531454",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_428_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_428.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 69.0,
+      "sex": "male",
+      "bmi": 29.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 428,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9531454/20040610/10052109",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-405",
+      "patient_id": "9545822",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_405_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_405.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 72.0,
+      "sex": "female",
+      "bmi": 28.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 405,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9545822/20050614/10559012",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-438",
+      "patient_id": "9556464",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_438_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_438.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 54.0,
+      "sex": "female",
+      "bmi": 40.5,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 438,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9556464/20040702/10081805",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-406",
+      "patient_id": "9564189",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_406_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_406.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 54.0,
+      "sex": "female",
+      "bmi": 30.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 406,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9564189/20040315/10010009",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-439",
+      "patient_id": "9566781",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_439_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_439.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 71.0,
+      "sex": "male",
+      "bmi": 31.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 439,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9566781/20060403/10920706",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-460",
+      "patient_id": "9568504",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_460_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_460.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 67.0,
+      "sex": "female",
+      "bmi": 26.3,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 460,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9568504/20050622/10936714",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-429",
+      "patient_id": "9574271",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_429_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_429.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 57.0,
+      "sex": "female",
+      "bmi": 31.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 429,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9574271/20040324/10012510",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-461",
+      "patient_id": "9577982",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_461_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_461.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 71.0,
+      "sex": "male",
+      "bmi": 29.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 461,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9577982/20050328/10190346",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-490",
+      "patient_id": "9581253",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_490_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_490.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 48.0,
+      "sex": "male",
+      "bmi": 34.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 490,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9581253/20041124/10146446",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-462",
+      "patient_id": "9592258",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_462_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_462.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 67.0,
+      "sex": "male",
+      "bmi": 29.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 462,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9592258/20050926/10594612",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-491",
+      "patient_id": "9598683",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_491_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_491.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 46.0,
+      "sex": "male",
+      "bmi": 28.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 491,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9598683/20050127/10342629",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-407",
+      "patient_id": "9601162",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_407_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_407.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 60.0,
+      "sex": "female",
+      "bmi": 23.3,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 407,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9601162/20050226/10727712",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-464",
+      "patient_id": "9603227",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_464_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_464.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 57.0,
+      "sex": "male",
+      "bmi": 33.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 464,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9603227/20040402/10015009",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-408",
+      "patient_id": "9606490",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_408_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_408.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 65.0,
+      "sex": "male",
+      "bmi": 30.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 408,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9606490/20040920/10244713",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-465",
+      "patient_id": "9613993",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_465_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_465.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 78.0,
+      "sex": "male",
+      "bmi": 31.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 465,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9613993/20040803/10093711",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-430",
+      "patient_id": "9617689",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_430_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_430.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 57.0,
+      "sex": "female",
+      "bmi": 33.0,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 430,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9617689/20050408/10182429",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-441",
+      "patient_id": "9624170",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_441_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_441.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 56.0,
+      "sex": "female",
+      "bmi": 21.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 441,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9624170/20050930/10600514",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-442",
+      "patient_id": "9627197",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_442_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_442.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 46.0,
+      "sex": "male",
+      "bmi": 30.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 442,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9627197/20050826/10498812",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-467",
+      "patient_id": "9631713",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_467_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_467.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 65.0,
+      "sex": "female",
+      "bmi": 23.9,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 467,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9631713/20040419/10022209",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-493",
+      "patient_id": "9638953",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_493_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_493.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 70.0,
+      "sex": "female",
+      "bmi": 33.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 493,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9638953/20040810/10677511",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-468",
+      "patient_id": "9640473",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_468_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_468.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 73.0,
+      "sex": "male",
+      "bmi": 29.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 468,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9640473/20040804/10095705",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-469",
+      "patient_id": "9642550",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_469_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_469.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 71.0,
+      "sex": "female",
+      "bmi": 28.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 469,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9642550/20040910/10697212",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-409",
+      "patient_id": "9655592",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_409_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_409.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 61.0,
+      "sex": "female",
+      "bmi": 32.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 409,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9655592/20040917/10702012",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-470",
+      "patient_id": "9657594",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_470_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_470.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 59.0,
+      "sex": "male",
+      "bmi": 28.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 470,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9657594/20040824/10118312",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-444",
+      "patient_id": "9659472",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_444_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_444.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 71.0,
+      "sex": "male",
+      "bmi": 27.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 444,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9659472/20040913/10699129",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-445",
+      "patient_id": "9695686",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_445_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_445.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 78.0,
+      "sex": "male",
+      "bmi": 31.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 445,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9695686/20040922/10705712",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-504",
+      "patient_id": "9700450",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_504_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_504.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": null,
+      "age": 74.0,
+      "sex": "female",
+      "bmi": 28.0,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 504,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9700450/20040630/10079909",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-431",
+      "patient_id": "9717730",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_431_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_431.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 53.0,
+      "sex": "female",
+      "bmi": 32.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 431,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9717730/20050815/10468912",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-432",
+      "patient_id": "9718992",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_432_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_432.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 49.0,
+      "sex": "female",
+      "bmi": 34.3,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 432,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9718992/20040608/10051609",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-410",
+      "patient_id": "9766939",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_410_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_410.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 57.0,
+      "sex": "male",
+      "bmi": 23.7,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 410,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9766939/20050310/10179213",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-411",
+      "patient_id": "9768869",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_411_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_411.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 69.0,
+      "sex": "female",
+      "bmi": 25.3,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 411,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9768869/20050311/10733412",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-433",
+      "patient_id": "9793168",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_433_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_433.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 71.0,
+      "sex": "female",
+      "bmi": 21.9,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 433,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9793168/20050331/10755412",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-412",
+      "patient_id": "9833489",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_412_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_412.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 59.0,
+      "sex": "male",
+      "bmi": 36.0,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 412,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9833489/20050822/10475312",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-413",
+      "patient_id": "9833782",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_413_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_413.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 45.0,
+      "sex": "male",
+      "bmi": 30.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 413,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9833782/20050512/10764012",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-414",
+      "patient_id": "9854269",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_414_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_414.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 54.0,
+      "sex": "female",
+      "bmi": 21.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 414,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9854269/20060209/10836909",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-416",
+      "patient_id": "9867315",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_416_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_416.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 55.0,
+      "sex": "male",
+      "bmi": 31.2,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 416,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9867315/20050407/10105512",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-417",
+      "patient_id": "9878765",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_417_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_417.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 50.0,
+      "sex": "female",
+      "bmi": 27.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 417,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9878765/20060330/10912909",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-418",
+      "patient_id": "9879069",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_418_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_418.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 57.0,
+      "sex": "female",
+      "bmi": 21.0,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 418,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9879069/20050502/10390112",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-435",
+      "patient_id": "9907090",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_435_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_435.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 53.0,
+      "sex": "female",
+      "bmi": 30.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 435,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9907090/20060107/10656729",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-419",
+      "patient_id": "9916140",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_419_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_419.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 69.0,
+      "sex": "female",
+      "bmi": 28.3,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 419,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9916140/20060329/10912712",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-422",
+      "patient_id": "9978579",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_422_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_422.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 47.0,
+      "sex": "female",
+      "bmi": 22.4,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 422,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9978579/20050110/10136612",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-423",
+      "patient_id": "9988421",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_423_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_423.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 54.0,
+      "sex": "female",
+      "bmi": 31.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 423,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9988421/20060217/10848612",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-424",
+      "patient_id": "9990192",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_424_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_424.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 57.0,
+      "sex": "female",
+      "bmi": 28.5,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 424,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9990192/20040914/10243812",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-437",
+      "patient_id": "9993833",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_437_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_437.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "train",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 75.0,
+      "sex": "male",
+      "bmi": 32.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 437,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9993833/20041221/10311116",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-463",
+      "patient_id": "9602703",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_463_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_463.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 62.0,
+      "sex": "male",
+      "bmi": 36.0,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 463,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9602703/20040405/10017509",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-492",
+      "patient_id": "9604541",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_492_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_492.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 4,
+      "age": 70.0,
+      "sex": "female",
+      "bmi": 28.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 492,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9604541/20050411/10105029",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-440",
+      "patient_id": "9614934",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_440_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_440.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 52.0,
+      "sex": "male",
+      "bmi": 31.7,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 440,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9614934/20050816/10472912",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-466",
+      "patient_id": "9627716",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_466_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_466.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 3,
+      "age": 56.0,
+      "sex": "male",
+      "bmi": 29.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 466,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9627716/20040416/10022809",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-443",
+      "patient_id": "9653075",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_443_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_443.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 2,
+      "age": 55.0,
+      "sex": "female",
+      "bmi": 42.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 443,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9653075/20050331/10754649",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-503",
+      "patient_id": "9695135",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_503_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_503.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": null,
+      "age": 56.0,
+      "sex": "female",
+      "bmi": 34.6,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 503,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9695135/20040826/10690411",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-415",
+      "patient_id": "9862541",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_415_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_415.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 46.0,
+      "sex": "female",
+      "bmi": 28.9,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 415,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9862541/20050420/10333812",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-434",
+      "patient_id": "9905024",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_434_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_434.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 60.0,
+      "sex": "female",
+      "bmi": 30.9,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 434,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9905024/20060411/11085812",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-436",
+      "patient_id": "9925594",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_436_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_436.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 1,
+      "age": 63.0,
+      "sex": "male",
+      "bmi": 31.7,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 436,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9925594/20050404/10180212",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-420",
+      "patient_id": "9967815",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_420_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_420.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 48.0,
+      "sex": "female",
+      "bmi": 23.5,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 420,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9967815/20041216/10310505",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-421",
+      "patient_id": "9973322",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_421_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_421.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 65.0,
+      "sex": "female",
+      "bmi": 24.8,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 421,
+        "upstream_split": "test",
+        "oai_path": "0.E.1/9973322/20050621/10933612",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    },
+    {
+      "case_id": "oaizib-425",
+      "patient_id": "9995338",
+      "image_path": "data/raw/oaizib/imagesTs/oaizib_425_0000.nii.gz",
+      "label_path": "data/raw/oaizib/labelsTs/oaizib_425.nii.gz",
+      "dataset_id": "oaizib_cm",
+      "modality": "MR",
+      "side": "right",
+      "split": "val",
+      "visit": "",
+      "kl_grade": 0,
+      "age": 50.0,
+      "sex": "female",
+      "bmi": 35.1,
+      "spacing_mm": [
+        0.7,
+        0.364583,
+        0.364583
+      ],
+      "structures": [
+        "femur",
+        "femoral_cartilage",
+        "tibia",
+        "medial_tibial_cartilage",
+        "lateral_tibial_cartilage"
+      ],
+      "extra": {
+        "cmt_id": 425,
+        "upstream_split": "test",
+        "oai_path": "0.C.2/9995338/20050128/10349212",
+        "structures_unavailable": [
+          "medial_meniscus",
+          "lateral_meniscus",
+          "patella",
+          "patellar_cartilage"
+        ]
+      }
+    }
+  ]
+}

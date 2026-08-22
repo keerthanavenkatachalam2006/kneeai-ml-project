@@ -438,6 +438,19 @@ def component_solid(
     return local.transform(_retarget(placement, Frame.IMPLANT, frame)), True
 
 
+def _extrudes_proximally(component: ImplantComponent) -> bool:
+    """Whether the component's material sits proximal to its seating plane.
+
+    Tibial components sit on top of the plateau cut (proximal); femoral and
+    patellar components occupy the space the resected bone vacated, which is distal
+    to / behind their seating cut.
+    """
+    return component.component_type in (
+        ComponentType.TIBIAL_BASEPLATE,
+        ComponentType.TIBIAL_INSERT,
+    )
+
+
 def _component_structure(component: ImplantComponent) -> Structure:
     if component.component_type is ComponentType.FEMORAL:
         return Structure.FEMUR

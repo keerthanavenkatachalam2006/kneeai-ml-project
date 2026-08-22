@@ -229,7 +229,20 @@ def build_loss(config: ModelConfig) -> Any:
     }
     name = config.loss.lower()
     if name == "dice_ce":
-        return DiceCELoss(**common, ce_weight=weights, lambda_dice=1.0, lambda_ce=1.0)
+        # MONAI renamed this argument from ``ce_weight`` to ``weight``. Pick
+        # whichever the installed version accepts so the loss works on both;
+        # silently dropping the weights would leave cartilage under-trained with
+        # no error to explain why.
+        import inspect
+
+        weight_kwarg = (
+            "weight"
+            if "weight" in inspect.signature(DiceCELoss.__init__).parameters
+            else "ce_weight"
+        )
+        return DiceCELoss(
+            **common, **{weight_kwarg: weights}, lambda_dice=1.0, lambda_ce=1.0
+        )
     if name == "dice":
         return DiceLoss(**common)
     if name == "dice_focal":

@@ -70,8 +70,22 @@ demo: ## End-to-end pipeline on the synthetic phantom knee (no patient data)
 	$(BIN)/kneeai demo run --out artifacts/demo
 
 .PHONY: api
-api: ## Run the FastAPI backend (dev reload)
-	$(BIN)/uvicorn kneeai.api.main:app --reload --port 8000
+api: ## Run the FastAPI backend (dev reload, loopback only — there is no auth)
+	$(BIN)/uvicorn kneeai.api.main:app --reload --host 127.0.0.1 --port 8000
+
+.PHONY: infer
+infer: ## Segment + plan one real OAIZIB-CM case with the trained model
+	$(BIN)/kneeai infer --case-id $(CASE) --source ai_prediction \
+		--image data/raw/oaizib/imagesTs/$(subst oaizib-,oaizib_,$(CASE))_0000.nii.gz \
+		--side right --strict
+
+.PHONY: model-card
+model-card: ## Rebuild the model card from the training history
+	$(BIN)/python scripts/write_model_card.py
+
+.PHONY: notebook
+notebook: ## Regenerate the Colab training notebook
+	$(BIN)/python scripts/make_colab_notebook.py
 
 .PHONY: db-init
 db-init: ## Create database tables
@@ -92,6 +106,15 @@ web: ## Run the Next.js surgeon dashboard
 .PHONY: web-install
 web-install: ## Install web dependencies
 	cd apps/web && npm install
+
+.PHONY: web-clean
+web-clean: ## Clear the Next build cache (fixes "Cannot find module './NNN.js'")
+	rm -rf apps/web/.next
+	@echo "cleared apps/web/.next — restart 'make web'"
+
+.PHONY: web-build
+web-build: ## Production build. STOP 'make web' first: both write to .next
+	cd apps/web && npx tsc --noEmit && npx next build
 
 # ---------------------------------------------------------------------------
 # Infra

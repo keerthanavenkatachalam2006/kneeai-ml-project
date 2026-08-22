@@ -303,14 +303,32 @@ def build_train_transforms(
     intensity: str = "zscore",
     ct_window: tuple[float, float] = (400.0, 1800.0),
     augment: bool = True,
+    mirror_lr_prob: float = 0.5,
 ) -> Any:
     """Training transform pipeline.
 
     Augmentation choices are constrained by anatomy:
 
-    - **No left/right flipping.** A flipped right knee is a left knee. The model
-      is applied per side and flip augmentation would teach it to ignore the one
-      cue that distinguishes them.
+    - **Left/right mirroring is ENABLED** (``mirror_lr_prob``), and this reverses an
+      earlier decision in this module. The original reasoning was that a flipped
+      right knee is a left knee, so flipping would teach the model to ignore the one
+      cue distinguishing them. That argument only holds for a dataset containing both
+      sides. OAIZIB-CM contains **507 right knees and zero left knees** (verified —
+      see ``docs/DATASET_ACQUISITION.md`` §1.6), so there is no laterality cue in the
+      data to preserve: the model cannot learn laterality from one-sided data, and
+      without mirroring it would never see a left knee in any form.
+
+      Mirroring is label-safe here. Medial and lateral are *anatomical* designations
+      that travel with the tissue, so reflecting the image and its label volume
+      together across the sagittal plane moves ``medial_tibial_cartilage`` to the
+      spatial side where a left knee's medial compartment belongs, while keeping its
+      label. The mirrored sample is a correctly labelled left knee.
+
+      A mirrored right knee is still not a *native* left knee — real left knees carry
+      their own anatomical variation — so this is not a substitute for left-knee data.
+      It is recorded as a limitation on the model card, and inference on a left knee
+      canonicalises by mirroring to right and mirroring the mask back
+      (``docs/ML_CONTRACT.md`` §6).
     - Rotations are kept small (±10°) because volumes are already reoriented to a
       canonical code; large rotations only model registration failure.
     - Scaling is kept to ±10%: the network's job includes learning absolute
@@ -371,6 +389,19 @@ def build_train_transforms(
     )
 
     if augment:
+        if mirror_lr_prob > 0.0:
+            # Mirror across the sagittal plane. The flip axis is derived from the
+            # orientation code rather than hardcoded: after Orientationd the
+            # mediolateral axis is whichever position carries the R/L letter, and
+            # assuming axis 0 would silently mirror in the wrong plane for any
+            # orientation that is not *LPS-like.
+            steps.append(
+                T.RandFlipd(
+                    keys=keys,
+                    prob=mirror_lr_prob,
+                    spatial_axis=_mediolateral_axis(orientation),
+                )
+            )
         steps.extend(
             [
                 T.RandAffined(
@@ -449,6 +480,23 @@ def build_val_transforms(
     return T.Compose(steps)
 
 
+def _mediolateral_axis(orientation: str) -> int:
+    """Index of the mediolateral (left-right) axis in an oriented volume.
+
+    Derived from the orientation code so the sagittal mirror is applied in the right
+    plane. Hardcoding axis 0 happens to be correct for ``LPS`` and ``RAS`` but
+    silently mirrors coronally or axially for codes such as ``PLS`` — producing
+    anatomically impossible training samples that still look like plausible volumes.
+    """
+    code = _monai_axcodes(orientation)
+    for index, letter in enumerate(code):
+        if letter in "RL":
+            return index
+    raise ValidationError(  # pragma: no cover - _monai_axcodes already validates
+        f"orientation {orientation!r} names no left-right axis"
+    )
+
+
 def _monai_axcodes(orientation: str) -> str:
     """Translate the platform's orientation code to MONAI/nibabel axcodes.
 
@@ -491,9 +539,16 @@ def build_dataloaders(
     cache_rate: float = 0.0,
     intensity: str = "zscore",
     augment: bool = True,
+    mirror_lr_prob: float = 0.5,
     seed: int = 42,
 ) -> tuple[Any, Any]:
-    """Build train/validation dataloaders, verifying split integrity first."""
+    """Build train/validation dataloaders, verifying split integrity first.
+
+    ``mirror_lr_prob`` defaults to 0.5 because OAIZIB-CM contains only right knees;
+    see :func:`build_train_transforms`. Validation is never mirrored — a model
+    selected on mirrored validation data would be scored on samples that do not
+    represent the inference distribution.
+    """
     require_monai()
     import torch
     from monai.data import CacheDataset, DataLoader, Dataset, list_data_collate
@@ -511,6 +566,7 @@ def build_dataloaders(
         n_samples_per_volume=n_samples_per_volume,
         intensity=intensity,
         augment=augment,
+        mirror_lr_prob=mirror_lr_prob,
     )
     val_tf = build_val_transforms(target_spacing=target_spacing, intensity=intensity)
 

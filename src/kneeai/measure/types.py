@@ -197,6 +197,15 @@ class Measurement:
             "origin": self.origin.value,
             "sign_convention": self.sign_convention,
             "in_reference_range": self.in_reference_range,
+            # Serialised alongside the boolean because the boolean on its own is not
+            # interpretable: a reader shown "outside range" has no way to tell whether
+            # the value missed by a millimetre or by a centimetre, and a reader shown
+            # "no range" cannot tell that from "within range". Both bounds are
+            # nullable, since several ranges are one-sided.
+            "reference_range": {
+                "low": self.quantity.reference_low,
+                "high": self.quantity.reference_high,
+            },
             "caveat": self.caveat,
         }
 

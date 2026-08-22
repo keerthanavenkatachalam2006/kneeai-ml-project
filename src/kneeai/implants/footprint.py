@@ -53,7 +53,16 @@ log = get_logger("implants.footprint")
 #: Conventional tibial resection depth below the *less worn* compartment's
 #: articular surface. Referencing the less-worn side is standard: referencing the
 #: worn side would under-resect and leave the joint line too high.
-DEFAULT_TIBIAL_RESECTION_MM = 2.0
+#:
+#: The depth matches the thinnest tibial construct that can be implanted — a 3 mm
+#: baseplate plus a 6 mm insert — so the joint line is restored rather than raised,
+#: the same "resect what you replace" rule the distal femoral cut follows. The two
+#: conventions quoted in the literature (10 mm from the unworn plateau, 2 mm from
+#: the worn one) describe the same plane; only the reference differs. Taking 2 mm
+#: from the *unworn* side mixes them, and leaves the cut up among the tibial spines
+#: where the cross-section is too narrow and too irregular for any baseplate to
+#: seat without corner overhang.
+DEFAULT_TIBIAL_RESECTION_MM = 9.0
 
 #: Conventional distal femoral resection, measured from the distal-most condyle.
 #: Matches the femoral component's distal thickness, so the joint line is restored.

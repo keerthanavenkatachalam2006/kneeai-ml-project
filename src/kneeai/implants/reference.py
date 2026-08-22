@@ -19,6 +19,10 @@ Both footprints are superellipses rather than ellipses. A real tibial baseplate
 outline is fuller than an ellipse — closer to a rounded rectangle — and using an
 ellipse would systematically under-report coverage at the corners of the resected
 plateau, which is exactly where overhang matters clinically.
+
+The footprints here are what the fit scoring uses. Three-dimensional solids for the
+viewer and for the geometric simulation are built from these same parameters by
+:mod:`kneeai.implants.geometry`.
 """
 
 from __future__ import annotations
@@ -295,6 +299,12 @@ def build_reference_catalog() -> ImplantCatalog:
                         side=side,
                         compatible_sizes=(label,),
                         notes="synthetic reference geometry",
+                        metadata={
+                            # An insert shares the baseplate's placement transform, so
+                            # its solid has to be modelled the plate's thickness above
+                            # the tibial cut rather than on it.
+                            "seats_on_baseplate_mm": BASEPLATE_THICKNESS_MM,
+                        },
                     )
                 )
 

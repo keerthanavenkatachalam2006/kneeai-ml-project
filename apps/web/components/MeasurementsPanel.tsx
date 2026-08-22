@@ -81,15 +81,21 @@ export default function MeasurementsPanel({ data }: { data: MeasurementSet | nul
                       aria-expanded={expanded === m.name}
                     >
                       {m.display_name}
-                      {m.caveats && m.caveats.length > 0 && (
-                        <span className="ml-1 text-amber-400" title={m.caveats.join(" ")}>
+                      {m.caveat && (
+                        <span className="ml-1 text-amber-400" title={m.caveat}>
                           !
                         </span>
                       )}
                     </button>
                     <span
-                      className={`row-val ${m.outside_reference_range ? "text-amber-400" : ""}`}
-                      title={m.outside_reference_range ? "Outside the reference range" : undefined}
+                      className={`row-val ${m.in_reference_range === false ? "text-amber-400" : ""}`}
+                      title={
+                        m.in_reference_range === false
+                          ? "Outside the published reference range"
+                          : m.in_reference_range == null
+                            ? "No reference range is published for this measurement"
+                            : undefined
+                      }
                     >
                       {m.formatted}
                       {m.quantity.uncertainty != null && (
@@ -107,11 +113,11 @@ export default function MeasurementsPanel({ data }: { data: MeasurementSet | nul
                           {m.sign_convention}
                         </>
                       )}
-                      {m.caveats && m.caveats.length > 0 && (
+                      {m.caveat && (
                         <>
                           <br />
                           <span className="text-amber-400">Caveat: </span>
-                          {m.caveats.join(" ")}
+                          {m.caveat}
                         </>
                       )}
                     </p>

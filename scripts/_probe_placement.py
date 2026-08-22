@@ -13,11 +13,14 @@ origin.
 """
 
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 
-CASE = Path(__file__).resolve().parents[1] / "artifacts/demo/cases/demo-phantom-right"
+ROOT = Path(__file__).resolve().parents[1]
+CASE = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "artifacts/demo/cases/demo-phantom-right"
+print(f"case: {CASE}")
 manifest = json.loads((CASE / "meshes/manifest.json").read_text())
 plan = json.loads((CASE / "plan.json").read_text())
 

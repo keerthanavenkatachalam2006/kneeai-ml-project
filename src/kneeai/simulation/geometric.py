@@ -16,13 +16,18 @@ information the surgeon needs, whereas an exception produces a blank screen.
 
 Component solids
 ----------------
-The reference catalog ships footprints, not full 3D surfaces. Where a component has
-no mesh, this module extrudes its footprint into a prism of the component's
-thickness. That is a genuine approximation and it is labelled as one throughout:
-a prism captures the footprint boundary and thickness (which is what overhang and
-gap checks need) but not the articular curvature (which is what a real
-collision/kinematics check needs). :attr:`SimulationReport.approximated_components`
-lists every component simulated this way.
+The reference catalog describes components by footprint and thickness, not by a full
+3D surface. :func:`component_solid` therefore tries three sources in order: a real
+surface from ``mesh_path`` if a licensed catalog supplies one, then the procedural
+geometry in :mod:`kneeai.implants.geometry` (a five-cut femoral shell, a keeled
+baseplate, a dished insert — built from the component's own envelope and wall
+thicknesses, so it seats on the planned cuts by construction), and only failing both
+an extruded footprint prism.
+
+A prism captures the footprint boundary and thickness, which is what overhang and gap
+checks need, but has no articular geometry at all, so any component reduced to one is
+listed in :attr:`SimulationReport.approximated_components` and the kinematic report
+states the limitation. With the bundled reference catalog that list is empty.
 """
 
 from __future__ import annotations
@@ -365,8 +370,17 @@ def component_solid(
     """Build a placed 3D solid for a component.
 
     Returns ``(mesh, approximated)``. ``approximated`` is True when the solid was
-    extruded from the footprint because the catalog has no surface for the
-    component.
+    extruded from the footprint because neither a manufacturer surface nor a
+    procedural model was available for the component.
+
+    Three sources are tried, in order of fidelity:
+
+    1. ``component.mesh_path`` — a real surface, when a licensed catalog supplies one.
+    2. :func:`kneeai.implants.geometry.component_surface` — procedural geometry built
+       from the component's own envelope and wall thicknesses. Not a real implant, but
+       the right shape: a five-cut femoral shell, a keeled baseplate, a dished insert.
+    3. an extruded footprint prism — the last resort, and reported as an
+       approximation because it has no articular geometry at all.
 
     Extrusion direction is **away from the bone** — a component sits on its cut and
     its material occupies the space the bone used to. For the tibial baseplate that
@@ -382,6 +396,25 @@ def component_solid(
             frame=Frame.IMPLANT,
         )
         return loaded.transform(_retarget(placement, loaded.frame, frame)), False
+
+    from kneeai.implants.geometry import component_surface
+
+    surface = component_surface(component)
+    if surface is not None:
+        local = AnatomicalMesh(
+            structure=_component_structure(component),
+            mesh=surface,
+            frame=Frame.IMPLANT,
+            metadata={
+                "component_id": component.component_id,
+                **{
+                    k: v
+                    for k, v in surface.metadata.items()
+                    if k != "component_id"
+                },
+            },
+        )
+        return local.transform(_retarget(placement, Frame.IMPLANT, frame)), False
 
     if not component.has_footprint:
         raise SimulationError(

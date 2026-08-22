@@ -390,8 +390,17 @@ def fit_component(
     footprint: BoneFootprint,
     component: ImplantComponent,
     config: FitConfig = FitConfig(),
+    *,
+    placement: tuple[float, float, float] | None = None,
 ) -> ImplantFit:
-    """Fit one component to one bone footprint and score the result."""
+    """Fit one component to one bone footprint and score the result.
+
+    ``placement`` pins the in-plane offset as ``(dx_mm, dy_mm, rotation_deg)`` relative
+    to the seeded centroid alignment, instead of searching for the best one. That is
+    what the surgeon's adjustment controls use: the same scoring, at a position they
+    chose, so the coverage and overhang figures they see belong to the placement they
+    are looking at rather than to the optimiser's.
+    """
     from shapely.affinity import rotate as shapely_rotate
     from shapely.affinity import translate as shapely_translate
 
@@ -427,8 +436,10 @@ def fit_component(
         # undercoverage, for the clinical reason given in the module docstring.
         return 10.0 * overhang_area + 1.0 * uncovered_area
 
-    best = _search_placement(objective, config)
-    dx, dy, theta = best
+    if placement is None:
+        dx, dy, theta = _search_placement(objective, config)
+    else:
+        dx, dy, theta = (float(placement[0]), float(placement[1]), float(placement[2]))
 
     placed = place(dx, dy, theta)
     reliefs = [
@@ -466,6 +477,10 @@ def fit_component(
         fit.notes.append(
             "evaluated against a provisional resection plane; the final plan may "
             "change these numbers"
+        )
+    if placement is not None:
+        fit.notes.append(
+            "scored at a manually specified placement, not at the optimiser's"
         )
     return fit
 

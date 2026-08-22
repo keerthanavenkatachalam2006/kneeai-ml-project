@@ -32,6 +32,15 @@ dependencies = [
     # footprints into solids for simulation; trimesh ships no triangulator itself
     # and its other options are GPL or non-free.
     "mapbox-earcut>=1.0",
+    # CSG backend for trimesh. kneeai.implants.geometry composes the component solids
+    # from unions, differences and intersections — the intercondylar space, the
+    # trochlear groove, the tibial keel, the insert dishes. Without it trimesh has no
+    # boolean engine at all and every component falls back to a flat extruded prism.
+    "manifold3d>=3.0",
+    # Quadric decimation backend for trimesh. Marching-cubes bone surfaces come out at
+    # 300k+ faces; without decimation the simulation's proximity queries exhaust an
+    # 8 GB machine and the process is OOM-killed.
+    "fast-simplification>=0.1",
     # Spatial index used by trimesh when capping a sliced mesh (it has to work out
     # how the cut cross-section's rings nest). Without it, capped slicing fails.
     "rtree>=1.0",

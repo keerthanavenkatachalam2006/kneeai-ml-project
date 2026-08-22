@@ -97,11 +97,16 @@ class ResectionTargets:
     match_native_slope: bool = False
 
     # --- tibial depth ---
-    #: Resection depth below the reference compartment's articular surface.
-    tibial_resection_mm: float = 2.0
+    #: Resection depth below the reference (less worn) compartment's articular
+    #: surface. 9 mm is the thinnest tibial construct — 3 mm baseplate plus 6 mm
+    #: insert — so the cut restores the joint line rather than raising it. This is
+    #: the same rule the distal femoral cut follows, and it is measured from the
+    #: unworn side; the "2 mm" figure quoted in the literature is the same plane
+    #: measured from the *worn* compartment instead.
+    tibial_resection_mm: float = 9.0
     #: Minimum bone left under the baseplate. Cutting deeper than the proximal
     #: metaphysis supports risks subsidence.
-    max_tibial_resection_mm: float = 12.0
+    max_tibial_resection_mm: float = 14.0
 
     # --- femoral coronal ---
     #: Target distal femoral coronal angle. 0 = perpendicular to the femoral

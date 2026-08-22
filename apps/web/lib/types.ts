@@ -81,9 +81,16 @@ export interface Measurement {
   landmarks: string[];
   origin: string;
   sign_convention?: string;
+  /**
+   * True inside the reference range, false outside it, and null when no range is
+   * published for the measurement. The three-way distinction matters: "no reference
+   * range exists" is not the same statement as "within range".
+   */
+  in_reference_range?: boolean | null;
+  /** Both bounds nullable: several published ranges are one-sided. */
   reference_range?: { low: number | null; high: number | null } | null;
-  outside_reference_range?: boolean;
-  caveats?: string[];
+  /** A single sentence, empty when there is nothing to qualify. */
+  caveat?: string;
 }
 
 export interface MeasurementSet {
@@ -119,16 +126,64 @@ export interface MeshManifest {
   meshes: MeshEntry[];
 }
 
-export interface ImplantCandidate {
+/** One scoring term inside a fit, with the sentence that explains it. */
+export interface FitTerm {
+  name: string;
+  metric?: number | null;
+  unit?: string;
+  score?: number | null;
+  weight?: number | null;
+  explanation?: string;
+}
+
+/**
+ * How one component fits one bone.
+ *
+ * Femoral components are scored dimensionally (a five-cut component does not seat on
+ * a single plane) so the polygon fields — coverage, overhang, undercoverage — are null
+ * for them and the mismatch fields carry the information instead. Tibial components
+ * are scored on the resected footprint, so it is the other way round.
+ */
+export interface ComponentFit {
+  component_id?: string;
+  size_label?: string;
+  component_type?: string;
+  method?: string;
+  score?: number | null;
+  acceptable?: boolean;
+  violations?: string[];
+  terms?: FitTerm[];
+  coverage_pct?: number | null;
+  overhang_max_mm?: number | null;
+  overhang_mean_mm?: number | null;
+  undercoverage_max_mm?: number | null;
+  ml_mismatch_mm?: number | null;
+  ap_mismatch_mm?: number | null;
+  component_ml_mm?: number | null;
+  component_ap_mm?: number | null;
+  translation_mm?: number[];
+  rotation_deg?: number | null;
+}
+
+export interface ImplantConfigurationRef {
   configuration_id?: string;
-  configuration_label?: string;
-  femoral_size?: string;
-  tibial_size?: string;
-  fit_score?: number;
-  coverage_pct?: number;
-  max_overhang_mm?: number;
-  undercoverage_mm?: number;
-  criteria?: Record<string, string>;
+  label?: string;
+  femoral?: string;
+  tibial_baseplate?: string;
+  tibial_insert?: string | null;
+  bearing?: string;
+  fixation?: string;
+  total_construct_thickness_mm?: number;
+}
+
+export interface ImplantCandidate {
+  configuration?: ImplantConfigurationRef;
+  score?: number;
+  acceptable?: boolean;
+  femoral_fit?: ComponentFit;
+  tibial_fit?: ComponentFit;
+  violations?: string[];
+  notes?: string[];
   [key: string]: unknown;
 }
 
@@ -238,6 +293,13 @@ export interface CaseSummary {
   simulation_state: string;
   banner: string;
   disclaimer: string;
+  /**
+   * Kellgren-Lawrence grade from the dataset's own radiographic reading, when the
+   * cohort supplies one. A label, never a model output — nothing in this platform
+   * predicts it.
+   */
+  kl_grade?: number | null;
+  cohort?: Record<string, unknown> | null;
 }
 
 export interface ModelInfo {

@@ -34,6 +34,7 @@ import {
   useGLTF,
 } from "@react-three/drei";
 import * as THREE from "three";
+import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 import { api, prettyStructure, structureColor } from "@/lib/api";
 import type {
@@ -85,8 +86,9 @@ const LPS_TO_VIEW = new THREE.Euler(-Math.PI / 2, 0, 0);
 
 const SOFT_TISSUE = /cartilage|meniscus/;
 
-/** Implant template colour. Teal reads as "planned overlay", not "photograph". */
-const IMPLANT_TEAL = "#2dd4bf";
+/** Polished platinum. Edge colour is a touch cooler so the silhouette separates. */
+const IMPLANT_SILVER = "#e2e8f0";
+const IMPLANT_EDGE = "#93c5fd";
 
 function materialFor(entry: MeshEntry, opacity: number, clip: THREE.Plane[] | undefined) {
   const isComponent = entry.category === "component";
@@ -95,29 +97,28 @@ function materialFor(entry: MeshEntry, opacity: number, clip: THREE.Plane[] | un
 
   if (isComponent) {
     /**
-     * Rendered as a translucent teal template, not polished metal.
+     * Polished cobalt-chrome.
      *
-     * The reference catalogue components are ~300 vertices — dimensionally correct
-     * (67 mm femoral ML, 70 mm tibial ML) but geometrically schematic extruded
-     * plates. A photoreal chrome shader on a 300-vertex plate looks like a bug,
-     * because the eye expects metal to carry reflections it has no surface detail
-     * to produce. A translucent template says "this is a planned position and an
-     * envelope", which is exactly what this geometry honestly represents, and it
-     * also lets the resected bone underneath stay visible.
+     * Roughness was previously held at 0.22 to hide faceting, because the components
+     * were extruded footprint prisms — flat plates whose large facets a mirror finish
+     * advertised immediately. They are now real shells built by
+     * ``kneeai.implants.geometry``, with a swept condylar J-curve and creased normals
+     * applied below, so the surface takes a polish the way a real component does.
+     *
+     * Fully opaque, because a seated component should occlude the bone it replaces —
+     * that occlusion is what makes the fit legible.
      */
     return new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(IMPLANT_TEAL),
-      metalness: 0.25,
-      roughness: 0.25,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
-      transparent: true,
-      opacity: Math.min(opacity, 0.62),
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      emissive: new THREE.Color("#0d9488"),
-      emissiveIntensity: 0.28,
-      envMapIntensity: 1.1,
+      color: new THREE.Color(IMPLANT_SILVER),
+      metalness: 1.0,
+      roughness: 0.14,
+      clearcoat: 0.8,
+      clearcoatRoughness: 0.08,
+      reflectivity: 1.0,
+      transparent: opacity < 0.995,
+      opacity,
+      side: THREE.FrontSide,
+      envMapIntensity: 2.1,
       clippingPlanes: clip,
     });
   }
@@ -168,21 +169,37 @@ function MeshPart({
     clone.traverse((child) => {
       const mesh = child as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const geometry = mesh.geometry as THREE.BufferGeometry;
+      let geometry = mesh.geometry as THREE.BufferGeometry;
       if (!geometry.attributes.normal) geometry.computeVertexNormals();
-      mesh.material = material;
-      mesh.castShadow = !isComponent && !SOFT_TISSUE.test(entry.structure);
-      mesh.receiveShadow = !isComponent;
 
-      // A translucent low-poly plate has almost no silhouette. Wireframe edges give
-      // it one, which is what makes the component legible at all against bone.
+      if (isComponent) {
+        // The component solids arrive with per-face normals, so a swept condylar
+        // surface shades as a run of flat strips. Creasing at 40 degrees smooths
+        // anything gentler than that — the J-curve, the trochlear groove, the
+        // condylar taper — while keeping the five planar cut faces and the
+        // intercondylar walls as hard edges, which is what a real component looks
+        // like. Doing this with computeVertexNormals alone would round the cut faces
+        // off too and lose the seating geometry.
+        geometry = toCreasedNormals(geometry, (40 * Math.PI) / 180);
+        mesh.geometry = geometry;
+      }
+
+      mesh.material = material;
+      mesh.castShadow = !SOFT_TISSUE.test(entry.structure);
+      mesh.receiveShadow = true;
+
+      // Metal against pale bone has weak edge contrast under diffuse lighting, so an
+      // edge line is what makes the component's extent readable against the cortex.
+      // The threshold has to sit above the crease angle used for the normals,
+      // otherwise every strip boundary on the condylar sweep is drawn as well and the
+      // component ends up wrapped in a wireframe.
       if (isComponent) {
         const edges = new THREE.LineSegments(
-          new THREE.EdgesGeometry(geometry, 25),
+          new THREE.EdgesGeometry(geometry, 48),
           new THREE.LineBasicMaterial({
-            color: IMPLANT_TEAL,
+            color: IMPLANT_EDGE,
             transparent: true,
-            opacity: 0.95,
+            opacity: 0.8,
             toneMapped: false,
           }),
         );

@@ -131,6 +131,46 @@ def _case_dir(case_id: str) -> Path:
     raise HTTPException(404, f"case not found: {cid}")
 
 
+def _cohort_record(case_id: str) -> dict[str, Any] | None:
+    """Dataset metadata for a case: KL grade, age, sex, BMI.
+
+    Read from the dataset manifests, which is where it belongs — this is the
+    cohort's own recorded data, not anything the platform inferred. Surfacing it
+    lets the interface show a radiographic KL grade beside computed geometry while
+    labelling it unambiguously as a dataset label rather than a prediction.
+
+    Returns ``None`` for cases with no cohort behind them, such as the phantom.
+    """
+    manifests = Path(get_settings().data_root) / "manifests"
+    if not manifests.is_dir():
+        return None
+    # Newest manifest first: later ones supersede earlier for the same case.
+    for path in sorted(manifests.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            payload = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        for record in payload.get("records", []) or []:
+            if record.get("case_id") != case_id:
+                continue
+            return {
+                "dataset_id": record.get("dataset_id"),
+                "patient_id": record.get("patient_id"),
+                "kl_grade": record.get("kl_grade"),
+                "age": record.get("age"),
+                "sex": record.get("sex"),
+                "bmi": record.get("bmi"),
+                "side": record.get("side"),
+                "licence": payload.get("licence"),
+                "source": f"dataset manifest {path.name}",
+                "note": (
+                    "Cohort metadata recorded by the dataset. Not produced by any model "
+                    "in this platform."
+                ),
+            }
+    return None
+
+
 def _read_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text())
@@ -303,11 +343,14 @@ def case_summary(case_id: str) -> dict[str, Any]:
         badge = source.upper()
 
     controller = _CONTROLLERS.get(case_id)
+    cohort = _cohort_record(case_id)
     return {
         "case_id": result.get("case_id", case_id),
         "source": source,
         "badge": badge,
         "is_ai": source == ArtifactSource.AI_PREDICTION.value,
+        "kl_grade": (cohort or {}).get("kl_grade"),
+        "cohort": cohort,
         "result": result,
         "landmarks": optional("landmarks"),
         "frame": optional("frame"),

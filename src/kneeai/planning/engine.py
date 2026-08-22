@@ -43,7 +43,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from kneeai.core.anatomy import LandmarkName, Side, Structure
-from kneeai.core.errors import PlanningError
+from kneeai.core.errors import ImplantError, PlanningError
 from kneeai.core.frames import Frame, Transform, rotation_from_axis_angle
 from kneeai.core.geometry import Axis, Plane, unit
 from kneeai.core.provenance import Origin, Provenance
@@ -525,6 +525,9 @@ def _plan_femoral_cuts(inputs: PlanningInputs, plan: SurgicalPlan) -> dict[str, 
 
     # --- component placements ---
     rotation_matrix_component = np.column_stack([ml_axis, ap_axis, proximal])
+    femoral_origin = _femoral_seating_origin(
+        inputs, distal_plane, distal_point, ap_axis, posterior_point, anterior_point
+    )
     plan.add_placement(
         ComponentPlacement(
             component_id=femoral.component_id,
@@ -532,7 +535,7 @@ def _plan_femoral_cuts(inputs: PlanningInputs, plan: SurgicalPlan) -> dict[str, 
             size_label=femoral.size_label,
             transform=Transform.from_rotation_translation(
                 rotation_matrix_component,
-                distal_point,
+                femoral_origin,
                 source=Frame.IMPLANT,
                 target=frame.source_frame,
                 label=f"femoral_placement[{femoral.component_id}]",
@@ -558,7 +561,9 @@ def _plan_femoral_cuts(inputs: PlanningInputs, plan: SurgicalPlan) -> dict[str, 
             size_label=baseplate.size_label,
             transform=Transform.from_rotation_translation(
                 np.column_stack([tibial_ml, tibial_ap, tibial_proximal]),
-                tibial_cut.plane.point,
+                _seating_origin(
+                    inputs, Structure.TIBIA, tibial_cut.plane, tibial_cut.plane.point
+                ),
                 source=Frame.IMPLANT,
                 target=frame.source_frame,
                 label=f"tibial_placement[{baseplate.component_id}]",
@@ -579,6 +584,128 @@ def _plan_femoral_cuts(inputs: PlanningInputs, plan: SurgicalPlan) -> dict[str, 
         "posterior_depth_mm": posterior_depth,
         "envelope_ap_mm": envelope,
     }
+
+
+def _femoral_seating_origin(
+    inputs: PlanningInputs,
+    distal_plane: Plane,
+    distal_point: NDArray[np.float64],
+    ap_axis: NDArray[np.float64],
+    posterior_point: NDArray[np.float64],
+    anterior_point: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Origin of the femoral component, on the distal cut.
+
+    Mediolaterally this is the cross-section rule in :func:`_seating_origin`.
+    Anteroposteriorly it is **not**: a femoral component is captured between its
+    anterior and posterior cuts, so its design origin lies at the midpoint of that cut
+    box, wherever the bone's distal cross-section happens to be centred.
+
+    Using the cross-section's anteroposterior mean for both axes is what left the
+    anterior flange short of the anterior cut. On a real femur the two references
+    differed by 10.6 mm: the flange's outer surface reached 35.3 mm anterior while the
+    anterior cut plane sat at 42.8 mm, so the component floated off the cut it is
+    supposed to seat against and the anterior chamfer had no bone to remove.
+
+    Shifting along ``ap_axis`` keeps the origin on the distal plane, because
+    ``ap_axis`` is orthogonal to that plane's normal by construction.
+    """
+    seat = _seating_origin(inputs, Structure.FEMUR, distal_plane, distal_point)
+    box_centre = 0.5 * (
+        float(np.dot(posterior_point, ap_axis)) + float(np.dot(anterior_point, ap_axis))
+    )
+    correction = box_centre - float(np.dot(seat, ap_axis))
+    log.info(
+        "femoral component centred on its cut box anteroposteriorly",
+        fields={
+            "ap_correction_mm": round(correction, 2),
+            "cut_box_centre_mm": round(box_centre, 2),
+        },
+    )
+    return seat + correction * ap_axis
+
+
+def _seating_origin(
+    inputs: PlanningInputs,
+    structure: Structure,
+    plane: Plane,
+    fallback: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Where a component's origin sits on its resection plane.
+
+    The centroid of the bone's cross-section at the cut, **not** the landmark the
+    cut was measured from.
+
+    This distinction is not cosmetic. Cut planes are referenced to anatomical
+    landmarks — "1.0 mm below the lateral plateau", "distal medial condyle" — and
+    those points are off-centre by definition. Seating a component there translates
+    it mediolaterally by the landmark's offset from the bone's centre, which measured
+    ~21 mm on the femur and ~18 mm on the tibia: the component then overhung one
+    cortex by nearly two centimetres while leaving the opposite side uncovered.
+
+    Anchoring to the cross-section centroid instead centres the component on the
+    surface it actually seats against, which is what a surgeon does by eye and what
+    the coverage and overhang figures in :mod:`kneeai.implants.matching` already
+    assume.
+
+    Falls back to ``fallback`` if the section cannot be computed — a plane placed
+    outside the bone raises, and a plan with a crude origin is more useful than no
+    plan at all. The fallback is logged, because it silently degrades placement.
+    """
+    mesh = inputs.meshes.get(structure)
+    if mesh is None:
+        log.warning(
+            "no mesh available to centre the component; using the cut reference point",
+            fields={"structure": structure.value, "plane": plane.label},
+        )
+        return np.asarray(fallback, dtype=np.float64)
+
+    section = mesh.section(plane)
+    if section is None or len(getattr(section, "vertices", ())) < 3:
+        log.warning(
+            "resection plane does not intersect the bone; component origin falls back "
+            "to the cut reference point, which is off-centre",
+            fields={"structure": structure.value, "plane": plane.label},
+        )
+        return np.asarray(fallback, dtype=np.float64)
+
+    vertices = np.asarray(section.vertices, dtype=np.float64)
+    u, v, _n = plane.basis(inputs.frame.right)
+    point = np.asarray(plane.point, dtype=np.float64)
+    relative = vertices - point
+    u_coords = relative @ u
+    v_coords = relative @ v
+
+    # Mediolateral: the midpoint between the medial and lateral extremes, NOT a
+    # centroid.
+    #
+    # At the distal femoral cut the intercondylar notch splits the section into two
+    # separate lobes. Anything that keeps only the largest polygon — as
+    # resection_footprint does — lands on one condyle and is off by roughly half a
+    # condylar width, which measured 22.7 mm on a real femur. Even an area-weighted
+    # centroid across both lobes drifts toward the bulkier condyle. The extremes are
+    # what a surgeon centres between, and they are indifferent to how many lobes the
+    # section has.
+    u_centre = 0.5 * (float(u_coords.min()) + float(u_coords.max()))
+
+    # Anteroposterior: the mean, which tracks where the bulk of the section sits.
+    # The AP extremes are less reliable here because a section can catch a thin
+    # posterior sliver that drags a midpoint backwards.
+    v_centre = float(v_coords.mean())
+
+    origin = point + u_centre * u + v_centre * v
+    shift = float(np.linalg.norm(origin - np.asarray(fallback, dtype=np.float64)))
+    log.info(
+        "component seated on the resected cross-section",
+        fields={
+            "structure": structure.value,
+            "plane": plane.label,
+            "shift_from_cut_reference_mm": round(shift, 2),
+            "ml_extent_mm": round(float(u_coords.max() - u_coords.min()), 1),
+            "n_section_vertices": int(len(vertices)),
+        },
+    )
+    return np.asarray(origin, dtype=np.float64)
 
 
 def _femoral_rotation(

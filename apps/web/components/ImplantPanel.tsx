@@ -8,6 +8,13 @@
  * surgeon cannot interrogate is one they must either take on faith or discard, and
  * PRD §2.2 requires the evidence to travel with the number.
  *
+ * The femoral and tibial components are shown separately because they are scored
+ * differently and for a reason: a tibial baseplate seats on one flat cut, so coverage
+ * and overhang of that footprint are the whole story, while a femoral component is
+ * captured between five cuts and never seats on a single plane, so its fit is governed
+ * by mediolateral overhang and anteroposterior envelope instead. Presenting one set of
+ * numbers for both would mean showing blanks for half of them.
+ *
  * The catalog disclaimer renders unconditionally: this is reference geometry, not
  * manufacturer data, and the fit numbers are only as meaningful as the shapes behind
  * them.
@@ -15,27 +22,82 @@
 
 import { useState } from "react";
 import { fmt } from "@/lib/api";
-import type { ImplantCandidate, ImplantResult } from "@/lib/types";
+import type { ComponentFit, ImplantCandidate, ImplantResult } from "@/lib/types";
 
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-function Metrics({ c }: { c: ImplantCandidate }) {
-  const score = num(c.fit_score);
-  const rows: Array<[string, string]> = [
-    ["Fit score", score === null ? "—" : `${score.toFixed(1)} / 100`],
-    ["Coverage", fmt(num(c.coverage_pct), "%", 1)],
-    ["Max overhang", fmt(num(c.max_overhang_mm), "mm", 2)],
-    ["Undercoverage", fmt(num(c.undercoverage_mm), "mm", 2)],
-  ];
+function label(c: ImplantCandidate | null | undefined): string {
+  return c?.configuration?.label ?? c?.configuration?.configuration_id ?? "—";
+}
+
+function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div>
-      {rows.map(([k, v]) => (
-        <div key={k} className="row">
-          <span className="row-key">{k}</span>
-          <span className="row-val">{v}</span>
-        </div>
+    <div className="row">
+      <span className="row-key">{k}</span>
+      <span className="row-val">{v}</span>
+    </div>
+  );
+}
+
+function FitBlock({ title, fit }: { title: string; fit: ComponentFit | undefined }) {
+  if (!fit) return null;
+  const score = num(fit.score);
+  const isFootprint = num(fit.coverage_pct) !== null;
+
+  return (
+    <div className="mt-2.5">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h4 className="section-label !mb-0">
+          {title} {fit.size_label ? `· size ${fit.size_label}` : ""}
+        </h4>
+        <span
+          className={
+            "chip shrink-0 " +
+            (fit.acceptable
+              ? "border-emerald-600 bg-emerald-500/10 text-emerald-300"
+              : "border-amber-600 bg-amber-500/10 text-amber-300")
+          }
+        >
+          {score === null ? "—" : score.toFixed(1)}
+          {fit.acceptable ? "" : " · constrained"}
+        </span>
+      </div>
+
+      {isFootprint ? (
+        <>
+          <Row k="Coverage" v={fmt(num(fit.coverage_pct), "%", 1)} />
+          <Row k="Max overhang" v={fmt(num(fit.overhang_max_mm), "mm", 2)} />
+          <Row k="Uncovered rim" v={fmt(num(fit.undercoverage_max_mm), "mm", 2)} />
+        </>
+      ) : (
+        <>
+          <Row k="Mediolateral vs bone" v={fmt(num(fit.ml_mismatch_mm), "mm", 1)} />
+          <Row k="Anteroposterior vs bone" v={fmt(num(fit.ap_mismatch_mm), "mm", 1)} />
+        </>
+      )}
+
+      {(fit.violations ?? []).map((v, i) => (
+        <p key={i} className="mt-1 text-[11px] leading-relaxed text-amber-400">
+          {v}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** The scoring terms, which are where the trade-off actually becomes visible. */
+function Terms({ fit }: { fit: ComponentFit | undefined }) {
+  const terms = fit?.terms ?? [];
+  if (terms.length === 0) return null;
+  return (
+    <div className="mt-1.5 space-y-1">
+      {terms.map((t, i) => (
+        <p key={i} className="text-[11px] leading-relaxed text-slate-400">
+          <span className="font-mono text-slate-300">{t.name.replace(/_/g, " ")}</span>
+          {t.explanation ? ` — ${t.explanation}` : ""}
+        </p>
       ))}
     </div>
   );
@@ -43,6 +105,7 @@ function Metrics({ c }: { c: ImplantCandidate }) {
 
 export default function ImplantPanel({ data }: { data: ImplantResult | null }) {
   const [showAll, setShowAll] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   if (!data) {
     return (
@@ -65,8 +128,8 @@ export default function ImplantPanel({ data }: { data: ImplantResult | null }) {
       ? [data.rationale]
       : [];
   const gap =
-    num(selected?.fit_score) !== null && num(runnerUp?.fit_score) !== null
-      ? num(selected!.fit_score)! - num(runnerUp!.fit_score)!
+    num(selected?.score) !== null && num(runnerUp?.score) !== null
+      ? num(selected!.score)! - num(runnerUp!.score)!
       : null;
 
   return (
@@ -79,68 +142,93 @@ export default function ImplantPanel({ data }: { data: ImplantResult | null }) {
       <div className="card-body">
         {selected ? (
           <>
-            <div className="mb-2 flex items-start justify-between gap-3">
+            <div className="mb-1.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate text-[14px] font-semibold text-slate-50">
-                  {selected.configuration_label ?? selected.configuration_id ?? "Selected"}
+                  {label(selected)}
                 </div>
                 <div className="mt-0.5 font-mono text-[11px] text-slate-500">
-                  femoral {selected.femoral_size ?? "—"} · tibial {selected.tibial_size ?? "—"}
+                  {selected.configuration?.bearing?.replace(/_/g, " ") ?? "—"} ·{" "}
+                  {selected.configuration?.fixation ?? "—"} ·{" "}
+                  {fmt(num(selected.configuration?.total_construct_thickness_mm), "mm", 1)}{" "}
+                  construct
                 </div>
               </div>
-              <span className="chip shrink-0 border-sky-500 bg-sky-500/15 text-sky-300">
-                recommended
+              <span
+                className={
+                  "chip shrink-0 " +
+                  (selected.acceptable
+                    ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                    : "border-amber-500 bg-amber-500/15 text-amber-300")
+                }
+              >
+                {selected.acceptable ? "recommended" : "best available"}
               </span>
             </div>
 
-            <Metrics c={selected} />
+            <Row
+              k="Combined fit"
+              v={num(selected.score) === null ? "—" : `${num(selected.score)!.toFixed(1)} / 100`}
+            />
 
-            {selected.criteria && Object.keys(selected.criteria).length > 0 && (
-              <div className="mt-3">
-                <h4 className="section-label">Why this size</h4>
-                {Object.entries(selected.criteria).map(([key, value]) => (
-                  <p key={key} className="mb-1 text-[11px] leading-relaxed text-slate-400">
-                    <span className="font-mono text-slate-300">{key}</span> — {String(value)}
-                  </p>
-                ))}
-              </div>
+            {/* When nothing clears the thresholds the panel has to say so plainly,
+                rather than presenting the least-bad option as a recommendation. */}
+            {!selected.acceptable && (
+              <p className="mt-2 rounded border border-amber-700/60 bg-amber-500/10 p-2 text-[11px] leading-relaxed text-amber-300">
+                No configuration in this catalog met every fit constraint. This is the
+                highest-scoring one; the unmet constraints are listed below and must be
+                resolved before approval.
+              </p>
             )}
 
-            {rationale.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {rationale.map((r, i) => (
-                  <p key={i} className="text-[11px] leading-relaxed text-slate-400">
-                    {r}
-                  </p>
-                ))}
+            <FitBlock title="Femoral" fit={selected.femoral_fit} />
+            <FitBlock title="Tibial baseplate" fit={selected.tibial_fit} />
+
+            <button
+              type="button"
+              className="btn-ghost mt-2.5 w-full"
+              onClick={() => setShowTerms(!showTerms)}
+              aria-expanded={showTerms}
+            >
+              {showTerms ? "Hide scoring detail" : "Why this size"}
+            </button>
+            {showTerms && (
+              <div className="mt-1.5">
+                <Terms fit={selected.femoral_fit} />
+                <Terms fit={selected.tibial_fit} />
+                {rationale.length > 0 && (
+                  <pre className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap font-mono text-[10.5px] leading-relaxed text-slate-500">
+                    {rationale.join("\n")}
+                  </pre>
+                )}
               </div>
             )}
           </>
         ) : (
-          <p className="text-[12px] text-slate-500">No candidate met the fit criteria.</p>
+          <p className="text-[12px] text-slate-500">
+            No candidate could be scored for this case.
+          </p>
         )}
 
         {runnerUp && (
           <div className="mt-4 border-t border-slate-800 pt-3">
-            <div className="mb-2 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate text-[12px] font-medium text-slate-300">
-                  {runnerUp.configuration_label ?? runnerUp.configuration_id ?? "Runner-up"}
-                </div>
-                <div className="mt-0.5 font-mono text-[11px] text-slate-500">
-                  femoral {runnerUp.femoral_size ?? "—"} · tibial {runnerUp.tibial_size ?? "—"}
-                </div>
+            <div className="mb-1 flex items-start justify-between gap-3">
+              <div className="min-w-0 truncate text-[12px] font-medium text-slate-300">
+                {label(runnerUp)}
               </div>
               <span className="chip shrink-0 border-slate-600 bg-slate-800 text-slate-400">
                 runner-up
               </span>
             </div>
-            <Metrics c={runnerUp} />
+            <Row
+              k="Combined fit"
+              v={num(runnerUp.score) === null ? "—" : `${num(runnerUp.score)!.toFixed(1)} / 100`}
+            />
             {gap !== null && (
               <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
-                Lost by <span className="font-mono text-slate-200">{gap.toFixed(1)}</span> points.
-                {runnerUp.criteria &&
-                  ` Weakest criterion: ${Object.keys(runnerUp.criteria)[0] ?? "unspecified"}.`}
+                {Math.abs(gap) < 0.05
+                  ? "Scores equally: these differ only in a dimension the fit model does not measure, such as insert thickness or bearing type."
+                  : `Lost by ${gap.toFixed(1)} points.`}
               </p>
             )}
           </div>
@@ -160,11 +248,10 @@ export default function ImplantPanel({ data }: { data: ImplantResult | null }) {
               <div className="mt-2 max-h-48 overflow-y-auto">
                 {data.candidates.map((c, i) => (
                   <div key={i} className="row">
-                    <span className="row-key">
-                      {c.configuration_label ?? c.configuration_id ?? `candidate ${i + 1}`}
-                    </span>
+                    <span className="row-key">{label(c)}</span>
                     <span className="row-val">
-                      {num(c.fit_score) === null ? "—" : num(c.fit_score)!.toFixed(1)}
+                      {num(c.score) === null ? "—" : num(c.score)!.toFixed(1)}
+                      {c.acceptable ? "" : " ⚠"}
                     </span>
                   </div>
                 ))}

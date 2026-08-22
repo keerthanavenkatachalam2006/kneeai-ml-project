@@ -633,12 +633,20 @@ def detect_landmarks(
     )
     cortex_region = femur_vertices[cortex_mask]
     if cortex_region.shape[0] >= 20:
-        cortex_midline = _midline_strip(
-            cortex_region, medial_dir, med_epi_point, lat_epi_point, config
-        )
-        target = cortex_midline if cortex_midline.shape[0] >= 10 else cortex_region
+        # Taken across the full mediolateral width, deliberately **not** restricted to
+        # a midline strip.
+        #
+        # At this level the midline is the trochlear groove — a valley between the two
+        # trochlear facets — so its anterior extreme sits behind the cortex by the
+        # depth of the groove. Measured on a real femur that was 6.7 mm, which then
+        # reported a flange flush with the cortex as standing 7.1 mm proud of it and
+        # warned about overstuffing that was not there.
+        #
+        # The reference a surgeon uses for notching is the anterior-most point the cut
+        # must not dip behind, which is the anterolateral cortex, and that is what the
+        # anterior extreme of the whole band picks out.
         cortex = _robust_extreme(
-            target, anterior_dir, percentile=98.0, label="anterior femoral cortex"
+            cortex_region, anterior_dir, percentile=98.0, label="anterior femoral cortex"
         )
         emit(LandmarkName.ANTERIOR_FEMORAL_CORTEX, cortex)
 

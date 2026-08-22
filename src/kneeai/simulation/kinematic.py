@@ -336,12 +336,16 @@ def simulate_flexion(
         "not interfere. It is not a prediction of the range of motion the patient "
         "will achieve.",
     ]
+    report.limitations.append(
+        "Component surfaces are procedurally generated reference geometry of the right "
+        "shape and scale, not licensed manufacturer surfaces. Condylar radii are "
+        "approximations, so contact positions are indicative rather than exact."
+    )
     if geometric.approximated_components:
         report.limitations.append(
-            "Component solids were extruded from footprints rather than taken from "
-            "manufacturer surfaces, so articular curvature is absent and deep-flexion "
-            "contact is not represented: "
-            + ", ".join(geometric.approximated_components)
+            "These components were reduced to extruded footprint prisms, which have no "
+            "articular curvature at all, so deep-flexion contact is not represented "
+            "for them: " + ", ".join(geometric.approximated_components)
         )
 
     try:

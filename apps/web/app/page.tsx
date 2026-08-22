@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ImplantPanel from "@/components/ImplantPanel";
 import MeasurementsPanel from "@/components/MeasurementsPanel";
+import OaPanel from "@/components/OaPanel";
 import RobotPanel from "@/components/RobotPanel";
 import Slice2D from "@/components/Slice2D";
 import SourceBadge from "@/components/SourceBadge";
@@ -221,6 +222,13 @@ export default function Dashboard() {
         hint: `${summary?.measurements?.n_measurements ?? 0} computed`,
         ready: Boolean(summary?.measurements),
         blockedReason: "No measurements for this case",
+      },
+      {
+        id: "oa",
+        label: "OA analysis",
+        hint: "Cartilage and alignment indicators",
+        ready: Boolean(summary?.measurements),
+        blockedReason: "Requires measurements",
       },
       {
         id: "plan",
@@ -659,6 +667,10 @@ export default function Dashboard() {
             {step === "slices" && <Slice2D caseId={summary.case_id} />}
 
             {step === "measure" && <MeasurementsPanel data={summary.measurements} />}
+
+            {step === "oa" && (
+              <OaPanel data={summary.measurements} klGrade={summary.kl_grade ?? null} />
+            )}
 
             {step === "plan" && (
               <>

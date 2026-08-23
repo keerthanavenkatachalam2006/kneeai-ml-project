@@ -32,8 +32,8 @@ export default function Stepper({
   const currentIndex = steps.findIndex((s) => s.id === current);
 
   return (
-    <nav aria-label="Workflow" className="border-b border-slate-800 bg-slate-900/60">
-      <ol className="mx-auto flex max-w-[1700px] items-stretch gap-px px-4">
+    <nav aria-label="Workflow" className="px-3 pt-3">
+      <ol className="mx-auto flex max-w-[1700px] items-stretch gap-1.5 overflow-x-auto rounded-panel border border-white/5 bg-clinic-900/70 p-1.5 shadow-panel backdrop-blur-sm">
         {steps.map((step, i) => {
           const isCurrent = step.id === current;
           const isPast = i < currentIndex;
@@ -48,23 +48,23 @@ export default function Stepper({
                 title={disabled ? step.blockedReason : step.hint}
                 onClick={() => onSelect(step.id)}
                 className={[
-                  "group relative flex w-full items-center gap-2.5 px-3 py-3 text-left transition-colors",
+                  "group flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left transition-all duration-150",
                   disabled
-                    ? "cursor-not-allowed opacity-40"
+                    ? "cursor-not-allowed opacity-30"
                     : isCurrent
-                      ? "bg-slate-800/80"
-                      : "hover:bg-slate-800/40",
+                      ? "bg-teal-400/15 ring-1 ring-inset ring-teal-400/40"
+                      : "hover:bg-white/[0.05]",
                 ].join(" ")}
               >
                 <span
                   aria-hidden
                   className={[
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums",
+                    "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums transition-colors",
                     isCurrent
-                      ? "bg-sky-500 text-white"
+                      ? "bg-teal-400 text-clinic-950"
                       : isPast
-                        ? "bg-emerald-600/80 text-white"
-                        : "border border-slate-600 text-slate-400",
+                        ? "bg-teal-400/25 text-teal-200"
+                        : "border border-white/15 text-teal-100/40",
                   ].join(" ")}
                 >
                   {isPast ? "✓" : i + 1}
@@ -72,19 +72,16 @@ export default function Stepper({
                 <span className="min-w-0">
                   <span
                     className={[
-                      "block truncate text-[13px] font-medium leading-tight",
-                      isCurrent ? "text-slate-50" : "text-slate-300",
+                      "block truncate text-[12px] font-medium leading-tight tracking-tight",
+                      isCurrent ? "text-white" : "text-teal-50/70",
                     ].join(" ")}
                   >
                     {step.label}
                   </span>
-                  <span className="hidden truncate text-[11px] leading-tight text-slate-500 lg:block">
+                  <span className="hidden truncate text-[10px] leading-tight text-teal-200/35 xl:block">
                     {disabled ? step.blockedReason : step.hint}
                   </span>
                 </span>
-                {isCurrent && (
-                  <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 bg-sky-500" />
-                )}
               </button>
             </li>
           );

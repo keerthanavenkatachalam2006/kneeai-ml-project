@@ -1,0 +1,9 @@
+KneeAI 3D Viewer Instructions
+========================================
+
+1. Open viewer/index.html in a web browser
+2. Click 'Load GLB file' and select: results/demo/knee_3d.glb
+3. Click 'Load patient profile JSON' and select: results/demo/patient_profile.json
+4. Use mouse to rotate/zoom the 3D model
+5. Toggle structures on/off with checkboxes
+6. View measurements and implant candidates in side panels

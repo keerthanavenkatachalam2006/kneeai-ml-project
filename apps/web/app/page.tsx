@@ -16,7 +16,10 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import FloatingPanel from "@/components/FloatingPanel";
 import ImplantPanel from "@/components/ImplantPanel";
+import ImplantPreview3D from "@/components/ImplantPreview3D";
+import ImplantSizeSelector from "@/components/ImplantSizeSelector";
 import MeasurementsPanel from "@/components/MeasurementsPanel";
 import OaPanel from "@/components/OaPanel";
 import ReadinessPanel from "@/components/ReadinessPanel";
@@ -34,7 +37,6 @@ import type {
   ModelInfo,
   RobotCommandSequence,
   SimulationStateInfo,
-  UploadJob,
 } from "@/lib/types";
 
 const Viewer3D = dynamic(() => import("@/components/Viewer3D"), {
@@ -47,6 +49,32 @@ const Viewer3D = dynamic(() => import("@/components/Viewer3D"), {
 });
 
 const ANIMATION_MS = 10000;
+
+/** Panel heading per workflow step. */
+const STEP_TITLES: Record<string, string> = {
+  upload: "Upload scan",
+  case: "Patient case",
+  segment: "AI segmentation",
+  slices: "2D slices",
+  anatomy: "3D anatomy",
+  measure: "Measurements",
+  oa: "OA analysis",
+  plan: "Implant & plan",
+  readiness: "Robotic readiness",
+  simulate: "Approve & simulate",
+};
+
+/**
+ * Open the robot cell as a real second window. Named so repeated clicks focus the
+ * existing one instead of stacking copies.
+ */
+function openRobotWindow(caseId: string) {
+  window.open(
+    `/robot?case=${encodeURIComponent(caseId)}`,
+    "morp-robot-cell",
+    "popup=yes,width=1320,height=880",
+  );
+}
 
 function baseSettings(): ViewerSettings {
   return {
@@ -76,12 +104,19 @@ export default function Dashboard() {
   const [step, setStep] = useState("case");
   const [pick, setPick] = useState<PickInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Size being previewed in the standalone implant viewer. Kept out of
+   * `ViewerSettings` on purpose: the main scene always shows the planned component, so
+   * the geometry on the bone stays the geometry the plan describes.
+   */
+  const [sizePreview, setSizePreview] = useState({
+    femoral: { ml: 1, ap: 1 },
+    tibial: { ml: 1, ap: 1 },
+    sizeLabel: "—",
+    isPlanned: true,
+  });
   const [loading, setLoading] = useState(true);
   const [viewerKey, setViewerKey] = useState(0);
-  const [pendingUpload, setPendingUpload] = useState<string | null>(null);
-
-  /** Lets a surgeon open the plan on a knee the classifier called non-arthritic. */
-  const [indicationOverride, setIndicationOverride] = useState(false);
 
   const glRef = useRef<{ gl: any; scene: any; camera: any } | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -99,8 +134,6 @@ export default function Dashboard() {
           list.cases.find((c) => c.has_plan && c.has_meshes) ??
           list.cases[0];
         setCaseId(best?.case_id ?? null);
-        // With nothing on disk, upload is the only useful thing to show.
-        if (!best) setStep("upload");
       } catch (e) {
         if (alive) setError(e instanceof ApiError ? e.message : String(e));
       } finally {
@@ -118,9 +151,6 @@ export default function Dashboard() {
     setProgress(null);
     setCommands(null);
     setStep("case");
-    // Must reset per case: an override carried from a previous knee would silently
-    // unlock the plan on a knee nobody has assessed.
-    setIndicationOverride(false);
     (async () => {
       try {
         const [detail, state] = await Promise.all([
@@ -134,7 +164,10 @@ export default function Dashboard() {
         // (anatomy / resected / component), so `structure` is not unique.
         const next = baseSettings();
         for (const mesh of detail.meshes?.meshes ?? []) {
-          next.visible[mesh.path] = true;
+          // Only show anatomy by default. Resected bone and implant components
+          // are shown when the user navigates to the plan/simulate steps.
+          const isAnatomy = mesh.category === "anatomy";
+          next.visible[mesh.path] = isAnatomy;
           next.opacity[mesh.path] = /cartilage/.test(mesh.structure)
             ? 0.7
             : /meniscus/.test(mesh.structure)
@@ -155,44 +188,98 @@ export default function Dashboard() {
     };
   }, [caseId]);
 
+  // --- OA gate ---------------------------------------------------------------
+  // A total knee replacement is indicated for osteoarthritis. Everything
+  // downstream of that decision — implant sizing, resection planes, simulation —
+  // is gated on it, so the score is computed here once and read everywhere.
+  const oaStatus = useMemo(() => {
+    const meas = summary?.measurements;
+    if (!meas) return { detected: false, probability: 0, known: false };
+
+    const findVal = (name: string) =>
+      meas.measurements.find((m) => m.name === name)?.quantity.value ?? null;
+
+    const fc = findVal("femoral_cartilage_mean_thickness");
+    const mtc = findVal("medial_tibial_cartilage_mean_thickness");
+    const ltc = findVal("lateral_tibial_cartilage_mean_thickness");
+    const jlca = findVal("jlca");
+
+    let score = 0;
+    let max = 0;
+    if (mtc != null) {
+      max += 22;
+      if (mtc < 0.9) score += 22;
+      else if (mtc < 1.4) score += 14;
+      else if (mtc < 1.6) score += 6;
+    }
+    if (fc != null) {
+      max += 18;
+      if (fc < 1.2) score += 18;
+      else if (fc < 1.8) score += 11;
+      else if (fc < 2.1) score += 4;
+    }
+    if (ltc != null) {
+      max += 12;
+      if (ltc < 1.0) score += 12;
+      else if (ltc < 1.5) score += 7;
+    }
+    if (jlca != null) {
+      max += 18;
+      const a = Math.abs(jlca);
+      if (a >= 8) score += 18;
+      else if (a >= 5) score += 12;
+      else if (a >= 3) score += 5;
+    }
+    if (mtc != null && ltc != null && ltc > 0) {
+      max += 14;
+      const asym = (Math.abs(mtc - ltc) / Math.max(mtc, ltc)) * 100;
+      if (asym >= 40) score += 14;
+      else if (asym >= 25) score += 8;
+      else if (asym >= 15) score += 3;
+    }
+
+    const probability = max > 0 ? score / max : 0;
+    return { detected: probability >= 0.5, probability, known: max > 0 };
+  }, [summary?.measurements]);
+
   // Each step turns on the overlays it is about, and off the ones it isn't. The
   // viewer should always be showing what the current panel is discussing.
   useEffect(() => {
-    setSettings((s) => ({
-      ...s,
-      showLandmarks: step === "anatomy" || step === "measure",
-      showCutPlanes: step === "plan" || step === "simulate",
-      showImplant: step === "plan" || step === "simulate",
-      showBoundary: step === "simulate" && Boolean(commands),
-      showTrajectory: step === "simulate" && Boolean(commands),
-      // The implant only makes sense seated in resected bone, so the plan step
-      // shows the after-state by default.
-      resectedView: step === "plan" || step === "simulate" ? true : s.resectedView,
-    }));
-  }, [step, commands]);
+    setSettings((s) => {
+      // Implant/resection views are gated on OA: a knee replacement is only
+      // indicated for an osteoarthritic knee, so showing the hardware on a
+      // healthy knee is clinically meaningless.
+      const showPlan = (step === "plan" || step === "simulate") && oaStatus.detected;
+      const updated = { ...s };
 
-  // An upload creates its case directory before the pipeline finishes, so the case
-  // id is only selected once the job is terminal. Selecting it earlier would fetch a
-  // case whose result.json does not exist yet and show a 404 mid-upload.
-  const handleUploadCreated = useCallback((newCaseId: string) => {
-    setPendingUpload(newCaseId);
-  }, []);
 
-  const handleUploadComplete = useCallback(async (job: UploadJob) => {
-    setPendingUpload(null);
-    try {
-      const list = await api.listCases();
-      setCases(list.cases);
-      if (list.cases.some((c) => c.case_id === job.case_id)) {
-        setCaseId(job.case_id);
-        // Land on the answer the user came for rather than back at the top.
-        setStep(job.outcome?.oa_available ? "oa" : "case");
+
+      if (summary?.meshes) {
+        for (const mesh of summary.meshes.meshes) {
+          const isSoft = /cartilage|meniscus/.test(mesh.structure);
+          if (mesh.category === "anatomy") {
+            // In the plan view the cartilage is gone: a TKA resects it. Keeping it on
+            // screen would also drown the component in segmentation fragments, since
+            // the cartilage masks scatter over the full volume.
+            updated.visible[mesh.path] = !showPlan;
+          } else if (mesh.category === "resected" || mesh.category === "component") {
+            // Never visible without OA.
+            updated.visible[mesh.path] = showPlan;
+          }
+        }
       }
-    } catch {
-      // A failed refresh is not worth surfacing: the job panel already shows the
-      // outcome, and the case selector can be reloaded by hand.
-    }
-  }, []);
+
+      return {
+        ...updated,
+        showLandmarks: step === "anatomy" || step === "measure",
+        showCutPlanes: showPlan,
+        showImplant: showPlan,
+        showBoundary: step === "simulate" && Boolean(commands) && oaStatus.detected,
+        showTrajectory: step === "simulate" && Boolean(commands) && oaStatus.detected,
+        resectedView: showPlan,
+      };
+    });
+  }, [step, commands, summary?.meshes, oaStatus.detected]);
 
   const animate = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -229,25 +316,9 @@ export default function Dashboard() {
   const result = summary?.result;
   const dice = model?.reference_metrics?.dice_per_structure ?? null;
 
-  /**
-   * True when the OA classifier ran and found no osteoarthritis.
-   *
-   * `oa_detected === false` specifically, not falsy: `null` means the assessment
-   * could not be produced, and an absent verdict is not the same as a negative one.
-   * Gating on the absent case would block every pre-OA case in the library.
-   */
-  const notIndicated = summary?.oa?.available === true && summary.oa.oa_detected === false;
-
   const steps: Step[] = useMemo(
     () => [
-      {
-        id: "upload",
-        label: "Upload scan",
-        hint: "MRI, CT or X-ray",
-        // Always available: it is the entry point, and it must not depend on a
-        // case already being loaded.
-        ready: true,
-      },
+      { id: "upload", label: "Upload scan", hint: "Upload MRI for analysis", ready: true },
       { id: "case", label: "Patient case", hint: "Study, model, provenance", ready: true },
       {
         id: "segment",
@@ -256,23 +327,10 @@ export default function Dashboard() {
         ready: Boolean(summary),
       },
       {
-        id: "oa",
-        label: "OA assessment",
-        hint:
-          summary?.oa?.available && summary.oa.probability != null
-            ? `${summary.oa.oa_detected ? "OA detected" : "No OA"} · ${Math.round(
-                summary.oa.probability * 100,
-              )}%`
-            : "Osteoarthritis: yes or no",
-        ready: Boolean(summary),
-        blockedReason: "Load or upload a case first",
-      },
-      {
         id: "slices",
-        label: "3 views",
+        label: "2D slices",
         hint: "Axial, coronal and sagittal with contours",
         ready: Boolean(summary),
-        blockedReason: "Load or upload a case first",
       },
       {
         id: "anatomy",
@@ -289,75 +347,76 @@ export default function Dashboard() {
         blockedReason: "No measurements for this case",
       },
       {
+        id: "oa",
+        label: "OA analysis",
+        hint: "Trained classifier + morphometric indicators",
+        ready: Boolean(summary?.measurements),
+        blockedReason: "Requires measurements",
+      },
+      {
         id: "plan",
         label: "Implant & plan",
-        hint: notIndicated
-          ? "Not indicated — no osteoarthritis"
-          : `${summary?.plan?.cuts.length ?? 0} resection cuts`,
-        // Arthroplasty treats osteoarthritis. With no OA detected there is no
-        // indication, so the plan is withheld by default rather than presented as
-        // a recommendation. Overridable: the classifier is weak (AUROC 0.567) and
-        // must not be able to veto a surgeon.
-        ready: Boolean(summary?.plan) && (!notIndicated || indicationOverride),
-        blockedReason: notIndicated
-          ? "No osteoarthritis detected — arthroplasty is not indicated. Override below to inspect the geometry anyway."
+        hint: oaStatus.detected
+          ? `${summary?.plan?.cuts.length ?? 0} resection cuts`
+          : "Not indicated — no OA detected",
+        ready: Boolean(summary?.plan) && oaStatus.detected,
+        blockedReason: !oaStatus.detected
+          ? "Knee replacement is only indicated for osteoarthritic knees. This knee shows no OA."
           : "No surgical plan for this case",
       },
       {
         id: "readiness",
         label: "Robotic readiness",
-        hint:
-          summary?.readiness?.percentage != null
-            ? `${Math.round(summary.readiness.percentage)}% · ${(
-                summary.readiness.band ?? ""
-              ).replace(/_/g, " ")}`
-            : "Percentage, with the breakdown",
-        ready: Boolean(summary?.readiness),
-        blockedReason: "Scored at the end of the pipeline; none for this case yet",
+        hint: oaStatus.detected ? "Execution readiness score" : "Not indicated — no OA",
+        ready: Boolean(summary) && oaStatus.detected,
+        blockedReason: !oaStatus.detected
+          ? "Readiness scoring applies to a surgical plan, which is not indicated without OA."
+          : "No case loaded",
       },
       {
         id: "simulate",
         label: "Approve & simulate",
-        hint: notIndicated ? "Not indicated — no osteoarthritis" : "Surgeon gate, then robot simulation",
-        ready: Boolean(summary?.plan) && (!notIndicated || indicationOverride),
-        blockedReason: notIndicated
-          ? "No osteoarthritis detected — nothing to operate on. Override below if you disagree with the classifier."
+        hint: oaStatus.detected ? "Surgeon gate, then robot simulation" : "Not indicated — no OA",
+        ready: Boolean(summary?.plan) && oaStatus.detected,
+        blockedReason: !oaStatus.detected
+          ? "Simulation requires a surgical plan, which is not indicated without OA."
           : "Requires a surgical plan",
       },
     ],
-    [summary, result, notIndicated, indicationOverride],
+    [summary, result, oaStatus],
   );
 
   return (
     <div className="flex h-[calc(100vh-1.75rem)] flex-col">
       {/* Header */}
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-2.5">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-[15px] font-semibold tracking-tight text-slate-50">
-            Knee Intelligence Platform
-          </h1>
-          <span className="hidden text-[11px] text-slate-500 md:inline">
-            MRI → segmentation → 3D → measurement → plan → simulation
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-400/15 ring-1 ring-inset ring-teal-400/30"
+          >
+            <span className="h-3 w-3 rounded-full bg-teal-400" />
           </span>
+          <div>
+            <h1 className="text-[15px] font-semibold leading-tight tracking-tight text-white">
+              MORP
+              <span className="ml-2 font-normal text-teal-200/45">Knee planning workspace</span>
+            </h1>
+            <span className="hidden text-[10px] leading-tight text-teal-200/40 md:block">
+              MRI → segmentation → 3D → measurement → plan → simulation
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2.5">
-          {pendingUpload && (
-            <span
-              className="chip border-sky-600 bg-sky-500/15 text-sky-300"
-              title={`Processing upload ${pendingUpload}`}
-            >
-              processing upload…
-            </span>
-          )}
           {summary && <SourceBadge source={summary.source} />}
           <select
             aria-label="Select case"
             value={caseId ?? ""}
             onChange={(e) => setCaseId(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[12px]"
+            className="rounded-full border border-white/10 bg-clinic-900/80 px-3.5 py-1.5 text-[12px] text-teal-50 transition-colors hover:border-white/20 focus:border-teal-400"
           >
             {cases.map((c) => (
-              <option key={c.case_id} value={c.case_id}>
+              <option key={c.case_id} value={c.case_id} className="bg-clinic-900">
                 {c.case_id} — {c.badge}
                 {c.has_plan ? "" : " (no plan)"}
               </option>
@@ -380,37 +439,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Upload is reachable with no case loaded — it is how the first case gets
-          here, so it cannot be nested inside the `summary` guard below. */}
-      {!summary && step === "upload" && !loading && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[1fr_400px]">
-          <section className="flex min-h-[26rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-950">
-            <div className="max-w-md px-6 text-center">
-              <p className="text-[13px] font-medium text-slate-300">
-                Upload a scan to begin
-              </p>
-              <p className="mt-2 text-[12px] leading-relaxed text-slate-500">
-                A knee MR volume runs the full pipeline: AI segmentation, 3D
-                reconstruction, measurement, an osteoarthritis assessment, implant
-                matching, a resection plan and a robotic readiness score. The
-                reconstructed knee appears here when it is ready.
-              </p>
-            </div>
-          </section>
-          <aside className="min-h-0 space-y-3 overflow-y-auto pr-0.5">
-            <UploadPanel
-              onCaseCreated={handleUploadCreated}
-              onComplete={handleUploadComplete}
-            />
-          </aside>
-        </div>
-      )}
-
-      {summary && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 xl:grid-cols-[1fr_400px]">
-          {/* ---------- Viewer ---------- */}
-          <section className="relative min-h-[26rem] overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-            {summary.meshes ? (
+      {(summary || step === "upload") && (
+        <div className="relative min-h-0 flex-1 p-3">
+          {/* ---------- Viewer: full bleed, panels float over it ---------- */}
+          <section className="relative h-full min-h-[26rem] overflow-hidden rounded-panel border border-white/5 bg-clinic-950 shadow-panel">
+            {step === "upload" && !summary?.meshes ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
+                <p className="text-[14px] font-medium text-white">Upload a knee MRI</p>
+                <p className="max-w-sm text-[11px] leading-relaxed text-teal-100/50">
+                  Drop a NIfTI (.nii.gz), DICOM zip, or single DICOM file into the upload
+                  panel. Segmentation, measurement and planning run automatically.
+                </p>
+              </div>
+            ) : summary?.meshes ? (
               <>
                 <Viewer3D
                   key={viewerKey}
@@ -468,7 +509,7 @@ export default function Dashboard() {
                 <p className="max-w-sm text-[11px] leading-relaxed text-slate-500">
                   The segmentation exists but has not been reconstructed. Run{" "}
                   <code className="font-mono text-slate-400">
-                    kneeai infer --case-id {summary.case_id}
+                    kneeai infer --case-id {summary?.case_id ?? "..."}
                   </code>{" "}
                   to build meshes, measurements and a plan.
                 </p>
@@ -476,75 +517,34 @@ export default function Dashboard() {
             )}
           </section>
 
-          {/* ---------- Context panel ---------- */}
-          <aside className="min-h-0 space-y-3 overflow-y-auto pr-0.5">
-            {/* Surface pick. Pinned above the step content because it is a direct
-                response to something the user just clicked. */}
-            {pick && (
-              <div className="card border-sky-800/70">
-                <div className="card-head">
-                  <span className="card-title">
-                    {pick.structure.replace(/_/g, " ")}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="chip border-sky-600 bg-sky-500/15 text-sky-300">
-                      {pick.category}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setPick(null)}
-                      className="text-slate-500 hover:text-slate-200"
-                      aria-label="Clear selection"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div className="row">
-                    <span className="row-key">Surface point</span>
-                    <span className="row-val">
-                      {pick.point.map((v) => v.toFixed(1)).join(", ")} mm
-                    </span>
-                  </div>
-                  {pick.entry.volume_mm3 != null && (
-                    <div className="row">
-                      <span className="row-key">Structure volume</span>
-                      <span className="row-val">
-                        {(pick.entry.volume_mm3 / 1000).toFixed(1)} cm³
-                      </span>
-                    </div>
-                  )}
-                  <div className="row">
-                    <span className="row-key">Triangles</span>
-                    <span className="row-val">{pick.entry.n_faces.toLocaleString()}</span>
-                  </div>
-                  <div className="row">
-                    <span className="row-key">Watertight</span>
-                    <span
-                      className={`row-val ${pick.entry.is_watertight ? "text-emerald-400" : "text-amber-400"}`}
-                    >
-                      {pick.entry.is_watertight ? "yes" : "no"}
-                    </span>
-                  </div>
-                  {pick.nearestLandmark && (
-                    <div className="row">
-                      <span className="row-key">Nearest landmark</span>
-                      <span className="row-val">
-                        {pick.nearestLandmark.name.replace(/_/g, " ")} ·{" "}
-                        {pick.nearestLandmark.distance_mm.toFixed(1)} mm
-                      </span>
-                    </div>
-                  )}
-                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                    Coordinates are in the image frame, millimetres. Click elsewhere on a
-                    surface to move the probe, or on the background to clear it.
-                  </p>
-                </div>
-              </div>
+          {/* ---------- Floating context panels ----------
+              A pointer-events-none layer so the viewer stays draggable everywhere the
+              panels are not; each panel re-enables pointer events for itself. */}
+          <div className="pointer-events-none absolute inset-3 z-10">
+            <FloatingPanel
+              title={STEP_TITLES[step] ?? "Details"}
+              subtitle={summary?.case_id}
+              accent={step === "simulate" ? "amber" : "teal"}
+              initial={{ x: 16, y: 16 }}
+              width={step === "simulate" ? 420 : 360}
+            >
+              <div className="space-y-3 p-3">
+            {/* Upload panel: always accessible from the upload step */}
+            {step === "upload" && (
+              <UploadPanel
+                onComplete={(job) => {
+                  if (job.status === "complete") {
+                    setCaseId(job.case_id);
+                    setStep("case");
+                  }
+                }}
+                onCaseCreated={(newCaseId) => {
+                  // Case created, but still processing
+                }}
+              />
             )}
 
-            {step === "case" && (
+            {step === "case" && summary && (
               <>
                 <div className="card">
                   <div className="card-head">
@@ -717,7 +717,7 @@ export default function Dashboard() {
               </>
             )}
 
-            {step === "anatomy" && summary.meshes && (
+            {step === "anatomy" && summary?.meshes && (
               <>
                 <div className="card">
                   <div className="card-head">
@@ -778,66 +778,64 @@ export default function Dashboard() {
               </>
             )}
 
-            {step === "upload" && (
-              <UploadPanel
-                onCaseCreated={handleUploadCreated}
-                onComplete={handleUploadComplete}
+            {step === "slices" && summary && <Slice2D caseId={summary.case_id} />}
+
+            {step === "measure" && summary && <MeasurementsPanel data={summary.measurements} />}
+
+            {step === "oa" && summary && (
+              <OaPanel data={summary.measurements} klGrade={summary.kl_grade ?? null} />
+            )}
+
+            {step === "readiness" && (
+              <ReadinessPanel
+                readiness={oaStatus.detected ? ((summary as any)?.readiness ?? null) : null}
+                reason={
+                  oaStatus.detected
+                    ? null
+                    : "Readiness scores a surgical plan. No plan is generated for a knee without osteoarthritis, so there is nothing to score."
+                }
               />
             )}
 
-            {step === "slices" && <Slice2D caseId={summary.case_id} />}
-
-            {step === "measure" && <MeasurementsPanel data={summary.measurements} />}
-
-            {step === "oa" && (
-              <>
-                <OaPanel
-                  data={summary.measurements}
-                  oa={summary.oa}
-                  klGrade={summary.kl_grade ?? null}
-                />
-                {notIndicated && summary.plan && (
-                  <div className="card border-amber-700">
-                    <div className="card-head">
-                      <span className="card-title text-amber-300">
-                        Arthroplasty not indicated
-                      </span>
-                    </div>
-                    <div className="card-body">
-                      <p className="text-[11px] leading-relaxed text-slate-300">
-                        A total knee replacement treats osteoarthritis. No
-                        osteoarthritis was detected here, so the implant, resection
-                        plan and robot simulation steps are{" "}
-                        <strong>withheld</strong> — presenting them would imply a
-                        recommendation that does not follow from the assessment.
-                      </p>
-                      <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                        The plan was still computed and is retained as reference
-                        geometry. This classifier is weak (validation AUROC 0.567 on
-                        11 cases), so it must not be able to veto a clinician.
-                      </p>
-                      <label className="mt-3 flex cursor-pointer items-start gap-2">
-                        <input
-                          type="checkbox"
-                          checked={indicationOverride}
-                          onChange={(e) => setIndicationOverride(e.target.checked)}
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-500"
-                        />
-                        <span className="text-[11px] leading-snug text-amber-300">
-                          I disagree with the assessment — unlock the plan and
-                          simulation steps for this case.
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
+            {step === "plan" && !oaStatus.detected && (
+              <div className="card border-emerald-800">
+                <div className="card-head">
+                  <span className="card-title text-emerald-300">
+                    Implant planning not indicated
+                  </span>
+                  <span className="chip border-emerald-600 bg-emerald-500/15 text-emerald-300">
+                    no OA
+                  </span>
+                </div>
+                <div className="card-body">
+                  <p className="text-[12px] leading-relaxed text-slate-300">
+                    This knee shows no osteoarthritis
+                    {oaStatus.known && ` (${Math.round(oaStatus.probability * 100)}% on the morphometric score)`}
+                    , so a total knee replacement is not indicated. The implant, resection
+                    planes and simulation are withheld rather than shown on a knee that
+                    does not need them.
+                  </p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    Review the OA analysis step for the cartilage geometry behind this
+                    conclusion, and the measurements step for the full morphometry.
+                  </p>
+                </div>
+              </div>
             )}
 
-            {step === "readiness" && <ReadinessPanel readiness={summary.readiness} />}
-
-            {step === "plan" && (
+            {step === "plan" && oaStatus.detected && summary && (
               <>
+                <ImplantSizeSelector
+                  data={summary.implants}
+                  onSelect={setSizePreview}
+                />
+                <ImplantPreview3D
+                  caseId={summary.case_id}
+                  manifest={summary.meshes}
+                  scale={{ femoral: sizePreview.femoral, tibial: sizePreview.tibial }}
+                  sizeLabel={sizePreview.sizeLabel}
+                  isPlanned={sizePreview.isPlanned}
+                />
                 <ImplantPanel data={summary.implants} />
                 {summary.plan && (
                   <div className="card">
@@ -912,20 +910,122 @@ export default function Dashboard() {
               </>
             )}
 
-            {step === "simulate" && (
-              <RobotPanel
-                caseId={summary.case_id}
-                hasPlan={Boolean(summary.plan)}
-                state={simState}
-                commands={commands}
-                animating={progress !== null && progress < 1}
-                activeCommand={activeCommand}
-                onStateChange={setSimState}
-                onCommandsChange={setCommands}
-                onAnimate={animate}
-              />
+            {step === "simulate" && !oaStatus.detected && (
+              <div className="card border-emerald-800">
+                <div className="card-head">
+                  <span className="card-title text-emerald-300">Simulation not indicated</span>
+                  <span className="chip border-emerald-600 bg-emerald-500/15 text-emerald-300">
+                    no OA
+                  </span>
+                </div>
+                <div className="card-body">
+                  <p className="text-[12px] leading-relaxed text-slate-300">
+                    Robotic simulation animates a resection plan. Since no replacement is
+                    indicated for this knee, there is no plan to approve or simulate.
+                  </p>
+                </div>
+              </div>
             )}
-          </aside>
+
+            {step === "simulate" && oaStatus.detected && summary && (
+              <>
+                {/* The cell opens in its own window. It used to float over the anatomy,
+                    which put machine motion and the knee it is cutting on the same
+                    pixels; they are two different things to look at. */}
+                <div className="card border-amber-900/50">
+                  <div className="card-head">
+                    <span className="card-title text-amber-300">Robot cell</span>
+                    <span className="card-sub">separate window</span>
+                  </div>
+                  <div className="card-body">
+                    <p className="mb-2.5 text-[11px] leading-relaxed text-teal-100/55">
+                      The 3-axis gantry runs in its own window so the machine and the
+                      anatomy are not fighting for the same canvas. Approval, safety checks
+                      and the command list are mirrored there.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-primary w-full"
+                      onClick={() => openRobotWindow(summary.case_id)}
+                    >
+                      Open robot cell ↗
+                    </button>
+                  </div>
+                </div>
+
+                <RobotPanel
+                  caseId={summary.case_id}
+                  hasPlan={Boolean(summary.plan)}
+                  state={simState}
+                  commands={commands}
+                  animating={progress !== null && progress < 1}
+                  activeCommand={activeCommand}
+                  onStateChange={setSimState}
+                  onCommandsChange={setCommands}
+                  onAnimate={animate}
+                />
+              </>
+            )}
+              </div>
+            </FloatingPanel>
+
+            {/* Surface probe. Its own panel, because it is a direct response to a click
+                and should not push the step content around when it appears. */}
+            {pick && (
+              <FloatingPanel
+                key="probe"
+                title={pick.structure.replace(/_/g, " ")}
+                subtitle={`${pick.category} · surface probe`}
+                accent="emerald"
+                initial={{ x: 420, y: 16 }}
+                width={300}
+                onClose={() => setPick(null)}
+              >
+                <div className="px-3 py-2.5">
+                  <div className="row">
+                    <span className="row-key">Surface point</span>
+                    <span className="row-val">
+                      {pick.point.map((v) => v.toFixed(1)).join(", ")} mm
+                    </span>
+                  </div>
+                  {pick.entry.volume_mm3 != null && (
+                    <div className="row">
+                      <span className="row-key">Structure volume</span>
+                      <span className="row-val">
+                        {(pick.entry.volume_mm3 / 1000).toFixed(1)} cm³
+                      </span>
+                    </div>
+                  )}
+                  <div className="row">
+                    <span className="row-key">Triangles</span>
+                    <span className="row-val">{pick.entry.n_faces.toLocaleString()}</span>
+                  </div>
+                  <div className="row">
+                    <span className="row-key">Watertight</span>
+                    <span
+                      className={`row-val ${
+                        pick.entry.is_watertight ? "text-emerald-400" : "text-amber-400"
+                      }`}
+                    >
+                      {pick.entry.is_watertight ? "yes" : "no"}
+                    </span>
+                  </div>
+                  {pick.nearestLandmark && (
+                    <div className="row">
+                      <span className="row-key">Nearest landmark</span>
+                      <span className="row-val">
+                        {pick.nearestLandmark.name.replace(/_/g, " ")} ·{" "}
+                        {pick.nearestLandmark.distance_mm.toFixed(1)} mm
+                      </span>
+                    </div>
+                  )}
+                  <p className="mt-2 text-[10px] leading-relaxed text-teal-100/40">
+                    Image frame, millimetres. Click another surface to move the probe.
+                  </p>
+                </div>
+              </FloatingPanel>
+            )}
+          </div>
         </div>
       )}
     </div>

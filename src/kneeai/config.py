@@ -54,9 +54,9 @@ class Settings(BaseSettings):
     log_json: bool = False
 
     # --- storage -----------------------------------------------------------
-    data_root: Path = Path("./data")
-    artifact_root: Path = Path("./artifacts")
-    model_registry: Path = Path("./artifacts/models")
+    data_root: Path = Path("E:/KneeAI/data")
+    artifact_root: Path = Path("E:/KneeAI/artifacts")
+    model_registry: Path = Path("E:/KneeAI/artifacts/models")
 
     # --- database / queue --------------------------------------------------
     database_url: str = "sqlite:///./artifacts/kneeai.db"

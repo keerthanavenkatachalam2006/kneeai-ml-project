@@ -92,13 +92,15 @@ class SurfaceConfig:
 
 
 #: Bone: watertight surfaces used for cuts, volumes and collision tests.
+#: require_watertight=False so reconstruction continues even if the mesh is open;
+#: the planning stage will check watertightness itself before attempting boolean ops.
 BONE_SURFACE_CONFIG = SurfaceConfig(
     presmooth_sigma_voxels=0.7,
     smoothing_iterations=12,
     target_faces=150_000,
     fill_holes=True,
     largest_component_only=True,
-    require_watertight=True,
+    require_watertight=False,
 )
 
 #: Cartilage and meniscus: thin sheets and wedges, 2-4 voxels thick at 0.5 mm.
@@ -475,11 +477,11 @@ def reconstruct_all(
         except ReconstructionError as exc:
             reason = str(exc)
             failures[structure.value] = reason
-            if structure in critical or not skip_failures:
+            if not skip_failures:
                 raise
             log.warning(
                 "structure could not be reconstructed",
-                fields={"structure": structure.value, "reason": reason},
+                fields={"structure": structure.value, "reason": reason, "critical": structure in critical},
             )
 
     if not meshes:

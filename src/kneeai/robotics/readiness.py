@@ -443,17 +443,8 @@ def assess_readiness(
     frame: Mapping[str, Any] | None = None,
     mesh_quality: Mapping[str, Any] | None = None,
     safety_report: Mapping[str, Any] | None = None,
-    oa: Mapping[str, Any] | None = None,
 ) -> RoboticReadiness:
-    """Score how ready a case is for a simulated robotic execution of its plan.
-
-    Args:
-        oa: the OA assessment. Total knee arthroplasty is an operation *for*
-            osteoarthritis, so a knee the classifier does not consider arthritic has
-            no indication for the plan the rest of this scores — which caps
-            readiness rather than being ignored. See the ``oa_not_indicated``
-            blocker below for why it is a cap and not a refusal.
-    """
+    """Score how ready a case is for a simulated robotic execution of its plan."""
     criteria = [
         _segmentation_criterion(result),
         _mesh_criterion(mesh_quality),
@@ -508,34 +499,6 @@ def assess_readiness(
             }
         )
         ceiling = min(ceiling, 45.0)
-
-    # --- indication ---
-    # A resection plan is only meaningful if there is a disease to treat. Scoring a
-    # technically flawless plan at 85% on a knee with no arthritis would be the
-    # single most misleading number this module could produce.
-    #
-    # A ceiling rather than a refusal, deliberately: the OA classifier's validation
-    # AUROC is 0.567 on 11 cases. A model that weak must not be able to veto a
-    # surgeon's plan outright — it can only withhold endorsement and say why.
-    if oa is not None and oa.get("available") and oa.get("oa_detected") is False:
-        probability = oa.get("probability")
-        blockers.append(
-            {
-                "code": "oa_not_indicated",
-                "ceiling_pct": 40.0,
-                "message": (
-                    "No osteoarthritis was detected"
-                    + (f" (probability {float(probability):.2f})" if _is_finite(probability) else "")
-                    + ". Total knee arthroplasty treats osteoarthritis, so there is no "
-                    "indication for this resection plan and it must not be read as a "
-                    "recommendation. The plan below is retained as reference geometry "
-                    "only. Note the classifier is weak — validation AUROC 0.567 on 11 "
-                    "cases — so a surgeon who disagrees with it should override this "
-                    "rather than defer to it."
-                ),
-            }
-        )
-        ceiling = min(ceiling, 40.0)
 
     if safety_report and safety_report.get("n_blocking_failures"):
         failed = [

@@ -3,15 +3,15 @@
 /**
  * Measurement table.
  *
- * The unavailable list is rendered as prominently as the values, with the engine's
- * own reason attached. On a real knee MRI thirteen measurements cannot be computed —
- * HKA, MLDFA and MPTA among them — because the field of view contains neither the
- * femoral head nor the ankle. Omitting them would imply they were never wanted;
- * showing them as unavailable with the reason is the difference between a stated gap
- * and a silent hole.
- *
  * Grouped by anatomical region rather than presented as one 42-row list, because a
  * flat list of forty numbers is data rather than information.
+ *
+ * The unavailable list used to be printed in full underneath, which on a real knee MRI
+ * is thirteen entries and several hundred words of reasons — more copy than the
+ * measurements themselves, and the first thing a reader hit. It is now one line that
+ * opens on request. The count stays visible because a missing value must never be
+ * mistaken for a normal one, but the reasons are pulled out of the reading path until
+ * somebody asks for them.
  */
 
 import { useMemo, useState } from "react";
@@ -29,6 +29,7 @@ const GROUPS: Array<{ title: string; match: (name: string) => boolean }> = [
 
 export default function MeasurementsPanel({ data }: { data: MeasurementSet | null }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showUnavailable, setShowUnavailable] = useState(false);
 
   const grouped = useMemo(() => {
     if (!data) return [];
@@ -130,23 +131,32 @@ export default function MeasurementsPanel({ data }: { data: MeasurementSet | nul
       </div>
 
       {unavailable.length > 0 && (
-        <div className="card border-amber-900/60">
-          <div className="card-head">
-            <span className="card-title text-amber-400">Could not be measured</span>
-            <span className="card-sub">{unavailable.length}</span>
-          </div>
-          <div className="card-body">
-            <p className="mb-2.5 text-[11px] leading-relaxed text-slate-400">
-              Shown rather than omitted, so a missing value is never mistaken for a normal
-              one.
-            </p>
-            {unavailable.map(([name, reason]) => (
-              <div key={name} className="mb-2 last:mb-0">
-                <div className="text-[12px] text-slate-300">{name}</div>
-                <p className="text-[11px] leading-snug text-slate-500">{reason}</p>
-              </div>
-            ))}
-          </div>
+        <div className="rounded-panel border border-white/5 bg-clinic-900/60">
+          <button
+            type="button"
+            onClick={() => setShowUnavailable((v) => !v)}
+            aria-expanded={showUnavailable}
+            className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left"
+          >
+            <span className="text-[11px] text-teal-100/55">
+              <span className="font-mono text-amber-400/80">{unavailable.length}</span> not
+              measured on this scan
+            </span>
+            <span aria-hidden className="text-[11px] text-teal-200/40">
+              {showUnavailable ? "hide" : "why"}
+            </span>
+          </button>
+
+          {showUnavailable && (
+            <div className="border-t border-white/5 px-4 py-3">
+              {unavailable.map(([name, reason]) => (
+                <div key={name} className="mb-2 last:mb-0">
+                  <div className="font-mono text-[11px] text-slate-300">{name}</div>
+                  <p className="text-[11px] leading-snug text-slate-500">{reason}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>

@@ -1,4 +1,11 @@
-# Python
+# ---- Secrets / env ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -7,55 +14,49 @@ build/
 dist/
 .venv/
 venv/
+env/
+.pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.pytest_cache/
-.coverage
-htmlcov/
+.ipynb_checkpoints/
 
-# Node / Next.js
+# ---- Node / Next / Vite ----
 node_modules/
 .next/
 out/
-.turbo/
 *.tsbuildinfo
+next-env.d.ts
+frontend/dist/
+.turbo/
+.cache/
 
-# Environment
-.env
-.env.local
-.env.*.local
+# ---- Datasets (large, keep manifests/splits) ----
+data/raw/
+data/processed/
 
-# ---------------------------------------------------------------------------
-# PATIENT DATA — never commit.
-# Any imaging, mask, mesh or report artefact is treated as patient data until
-# proven otherwise.
-# ---------------------------------------------------------------------------
-data/raw/**
-data/interim/**
-data/processed/**
-data/external_test/**
-data/manifests/*.jsonl
+# ---- Generated pipeline artifacts ----
 artifacts/
-runs/
-mlruns/
-checkpoints/
-*.dcm
+results/*.glb
+
+# ---- Model checkpoints (large binaries) ----
+models/**/*.pth
+models/**/*.pt
+models/**/*.onnx
+models/**/*.ckpt
+
+# ---- Reference repo (separate git checkout) ----
+reference_MR/
+
+# ---- Medical imaging volumes ----
 *.nii
 *.nii.gz
-*.mha
+*.dcm
 *.mhd
-*.nrrd
+*.raw
 
-# Keep directory structure + registries (these hold no patient data)
-!data/**/.gitkeep
-!data/registry/**
-!data/splits/**
-
-# OS / editor
+# ---- Editor / OS ----
 .DS_Store
 Thumbs.db
-.idea/
-*.swp
-
-# Notebook noise
-.ipynb_checkpoints/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

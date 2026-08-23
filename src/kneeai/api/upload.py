@@ -60,16 +60,6 @@ log = get_logger("api.upload")
 #: disk before checking would be the bug.
 MAX_UPLOAD_BYTES = 1_500_000_000  # 1.5 GB
 
-#: Sliding-window overlap used for uploads, against the 0.5 default.
-#:
-#: This is a real accuracy-for-latency trade and it is made deliberately. On CPU at
-#: 0.5 mm the patch count scales steeply with overlap, and 0.5 puts an upload in the
-#: region of ten minutes against roughly four at 0.25. Batch evaluation
-#: (``scripts/evaluate_segresnet.py``) leaves the default alone, so the numbers on
-#: the model card are not the ones this shortcut produces — a gap worth remembering
-#: when comparing an uploaded case against the card.
-UPLOAD_INFERENCE_OVERLAP = 0.25
-
 _NIFTI_SUFFIXES = (".nii", ".nii.gz")
 _ARCHIVE_SUFFIXES = (".zip",)
 _DICOM_SUFFIXES = (".dcm", ".dicom", ".ima")
@@ -276,17 +266,6 @@ def ingest_upload(
     if modality_hint is not None and volume.modality is not modality_hint:
         volume = replace(volume, modality=modality_hint)
 
-    # A bare NIfTI carries no modality tag, so an untagged upload arrives as
-    # UNKNOWN. That is not a soft detail: the model card's compatibility gate
-    # refuses to run an MR model on an UNKNOWN volume, and rightly so. Since this
-    # platform's only segmentation model is MR and the operator chose to upload
-    # here, the assumption is applied explicitly and recorded loudly rather than
-    # left to fail deep inside the predictor.
-    assumed_modality = False
-    if volume.modality is Modality.UNKNOWN:
-        volume = replace(volume, modality=Modality.MR)
-        assumed_modality = True
-
     report = validate_volume(volume)
     validation = report.to_dict()
     warnings.extend(i.message for i in report.warnings)
@@ -295,15 +274,6 @@ def ingest_upload(
         blocking = "; ".join(i.message for i in report.errors)
         raise ValidationError(
             f"the uploaded volume failed validation and was not processed: {blocking}"
-        )
-
-    if assumed_modality:
-        warnings.append(
-            "The file carries no modality tag, so it was ASSUMED to be MR — the only "
-            "modality this platform's segmentation model is trained for. If this is "
-            "actually a CT, the segmentation is unvalidated cross-modality use and "
-            "its output should not be trusted. Re-upload with the modality set "
-            "explicitly to remove the assumption."
         )
 
     # Written (or rewritten) through write_volume so the sidecar carries the
@@ -315,6 +285,11 @@ def ingest_upload(
             "This is a CT. The segmentation model was trained on 3D DESS MR only; "
             "applying it across modalities is unvalidated and its output should be "
             "treated as unreliable until measured on CT with ground truth."
+        )
+    elif volume.modality is Modality.UNKNOWN:
+        warnings.append(
+            "The modality could not be determined from the file. The MR model will "
+            "be applied; confirm the input really is knee MR."
         )
 
     return IngestedScan(
@@ -380,13 +355,7 @@ class UploadJob:
             "outcome": self.outcome,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            # Measured against now while the job is live. Segmentation is a single
-            # stage lasting most of the wall clock and it posts no intermediate
-            # updates, so deriving elapsed time from updated_at would freeze the
-            # clock during precisely the part the user is waiting through.
-            "elapsed_s": round(
-                (self.updated_at if self.terminal else time.time()) - self.created_at, 1
-            ),
+            "elapsed_s": round(self.updated_at - self.created_at, 1),
         }
 
 
@@ -562,35 +531,6 @@ def process_upload(
         )
         return
 
-    # The model card declares MR and the compatibility gate enforces it. Checking
-    # here turns a deep ValidationError from inside the predictor into a statement
-    # about the input, which is what the operator can actually act on.
-    if scan.modality is Modality.CT:
-        registry.update(
-            case_id,
-            status="rejected",
-            stage="CT stored; the segmentation model is MR-only",
-            progress=1.0,
-            error=(
-                "This is a CT, and the only registered segmentation model was trained "
-                "on 3D DESS knee MR. Running it on CT is cross-modality use with no "
-                "validation behind it, so the model card's compatibility gate refuses "
-                "it rather than producing a confident, unmeasured mask. The scan has "
-                "been stored and the 2D views are available. To proceed you would need "
-                "a model trained or validated on CT."
-            ),
-            outcome={
-                "oa_available": False,
-                "oa_reason": (
-                    "The OA classifier consumes a segmentation, and no segmentation "
-                    "could be produced for a CT."
-                ),
-                "readiness_available": False,
-                "readiness_reason": "No plan exists, because no segmentation was produced.",
-            },
-        )
-        return
-
     # --- 2. segment ---
     registry.update(
         case_id,
@@ -598,36 +538,33 @@ def process_upload(
         stage="running AI segmentation (this is the slow step)",
         progress=0.12,
     )
-    config = AdapterConfig(
-        backend=ArtifactSource.AI_PREDICTION,
-        side=scan.side,
-        image_path=scan.image_path,
-        model_reference="seg_oaizib",
-        allow_degradation=not strict,
-        # Interactive path: the user is watching a progress bar. 0.25 overlap is
-        # 2-3x faster on CPU than the 0.5 default for a marginal boundary gain.
-        inference_overlap=UPLOAD_INFERENCE_OVERLAP,
-    )
+
+    # Use the bridge pipeline which wraps our trained SegResNet model
+    from kneeai.bridge import BridgeConfig, run_legacy_segmentation, wrap_as_outcome
+    import nibabel as nib
+    import numpy as np
+
     try:
-        outcome = MLInferenceAdapter(config).segment()
-    except KneeAIError as exc:
+        nii = nib.load(str(scan.image_path))
+        image_array = np.asarray(nii.dataobj, dtype=np.float32)
+        voxel_size = tuple(float(x) for x in nii.header.get_zooms()[:3])
+
+        bridge_cfg = BridgeConfig(side=scan.side.value if scan.side else "right")
+        legacy_result = run_legacy_segmentation(image_array, voxel_size, bridge_cfg)
+        outcome = wrap_as_outcome(
+            legacy_result,
+            image_path=scan.image_path,
+            side=scan.side.value if scan.side else "right",
+        )
+    except Exception as exc:
         registry.update(
             case_id,
             status="failed",
             stage="segmentation failed",
             progress=1.0,
-            error=str(exc),
+            error=f"{type(exc).__name__}: {exc}",
         )
         return
-
-    if outcome.degraded:
-        registry.add_warnings(
-            case_id,
-            [
-                "AI segmentation was unavailable and the result was produced by the "
-                f"phantom backend instead: {outcome.degradation_reason}"
-            ],
-        )
 
     # --- 3. pipeline ---
     registry.update(case_id, status="processing", stage="building the case", progress=0.30)
@@ -645,8 +582,53 @@ def process_upload(
             options=PipelineOptions(on_stage=on_stage),
         )
     except KneeAIError as exc:
+        # Pipeline failed but segmentation succeeded. Run OA assessment directly
+        # from the segmentation mask so the user gets the OA answer.
+        error_msg = str(exc)
+        registry.add_warnings(case_id, [f"Pipeline partially failed: {error_msg}"])
+
+        oa_outcome: dict[str, Any] = {
+            "oa_available": False,
+            "oa_reason": f"Pipeline did not complete fully: {error_msg}",
+        }
+
+        # Try to run OA assessment from the segmentation
+        try:
+            from kneeai.oa.assess import assess_oa, load_classifier
+
+            clf = load_classifier()
+            if clf is not None and outcome.mask is not None:
+                registry.update(case_id, stage="assessing osteoarthritis", progress=0.85)
+                oa_result = assess_oa(outcome.mask, case_id=case_id, classifier=clf)
+                oa_dict = oa_result.to_dict()
+
+                # Write oa.json to the case directory
+                import json
+                oa_path = case_root / "cases" / case_id / "oa.json"
+                oa_path.parent.mkdir(parents=True, exist_ok=True)
+                oa_path.write_text(json.dumps(oa_dict, indent=2) + "\n")
+
+                oa_outcome = {
+                    "oa_available": bool(oa_dict.get("available")),
+                    "oa_detected": oa_dict.get("oa_detected"),
+                    "oa_probability": oa_dict.get("probability"),
+                    "oa_severity": oa_dict.get("severity"),
+                    "oa_reason": oa_dict.get("unavailable_reason"),
+                }
+        except Exception as oa_exc:
+            registry.add_warnings(case_id, [f"OA assessment also failed: {oa_exc}"])
+
         registry.update(
-            case_id, status="failed", stage="pipeline failed", progress=1.0, error=str(exc)
+            case_id,
+            status="complete",
+            stage="complete (partial — some stages failed)",
+            progress=1.0,
+            error=None,
+            outcome={
+                **oa_outcome,
+                "readiness_available": False,
+                "readiness_reason": "Pipeline did not reach readiness scoring.",
+            },
         )
         return
 

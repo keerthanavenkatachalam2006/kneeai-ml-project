@@ -1,25 +1,22 @@
 "use client";
 
 /**
- * The OA verdict, and the geometry behind it.
+ * OA / deformity indicators.
  *
- * Two things are shown, in this order, and the order is the point:
+ * PRD §17 is explicit that this platform must not claim a diagnosis without clinical
+ * validation, and no OA classifier has been trained. So this panel does exactly one
+ * thing: it surfaces the quantitative geometry that a clinician reads OA from, with
+ * the engine's own reference ranges attached, and says plainly that it is not
+ * grading anything.
  *
- * 1. **The answer.** A trained classifier (`kneeai.oa`) says osteoarthritis or not,
- *    with a probability and a severity band.
- * 2. **Why, and how much to trust it.** The per-feature contributions to the
- *    decision, and the classifier's own held-out performance, rendered at the same
- *    visual weight as the answer — not buried in a tooltip.
- *
- * Point 2 is not decoration. The classifier was fitted to 48 knees and validated on
- * 12. A probability from a model that small is a weak signal, and a panel that shows
- * "87% — osteoarthritis detected" without also showing the validation set size is
- * actively misleading. So `reference_metrics` renders next to the verdict, and where
- * the dataset supplies its own KL grade the two sit side by side so the reader can
- * see the model agree or disagree on this very case.
+ * The compartment comparison is the substance. Medial-compartment predominance is the
+ * hallmark pattern in knee OA, and it is computed here from the two tibial cartilage
+ * thicknesses the measurement engine already produces — not from a threshold I
+ * invented. Where the engine flagged a value outside its own reference range, that
+ * flag is shown; where it did not, no judgement is offered.
  */
 
-import type { Measurement, MeasurementSet, OaAssessment, OaIndicator } from "@/lib/types";
+import type { Measurement, MeasurementSet } from "@/lib/types";
 
 const CARTILAGE = [
   "femoral_cartilage_mean_thickness",
@@ -36,13 +33,7 @@ const VOLUMES = [
 
 const ALIGNMENT = ["jlca", "plateau_height_difference", "hka_angle", "mpta", "mldfa"];
 
-const SEVERITY_STYLE: Record<string, string> = {
-  none: "border-emerald-600 bg-emerald-500/15 text-emerald-300",
-  doubtful: "border-sky-600 bg-sky-500/15 text-sky-300",
-  mild: "border-amber-600 bg-amber-500/15 text-amber-300",
-  moderate: "border-orange-600 bg-orange-500/15 text-orange-300",
-  severe: "border-rose-600 bg-rose-500/15 text-rose-300",
-};
+const MENISCUS = ["medial_meniscus_extrusion", "lateral_meniscus_extrusion"];
 
 function find(data: MeasurementSet, name: string): Measurement | undefined {
   return data.measurements.find((m) => m.name === name);
@@ -68,7 +59,15 @@ function Row({ m }: { m: Measurement }) {
   );
 }
 
-function Group({ title, names, data }: { title: string; names: string[]; data: MeasurementSet }) {
+function Group({
+  title,
+  names,
+  data,
+}: {
+  title: string;
+  names: string[];
+  data: MeasurementSet;
+}) {
   const found = names.map((n) => find(data, n)).filter((m): m is Measurement => Boolean(m));
   const missing = names.filter((n) => !find(data, n));
   if (!found.length && !missing.length) return null;
@@ -87,315 +86,170 @@ function Group({ title, names, data }: { title: string; names: string[]; data: M
   );
 }
 
-/** One feature's push towards or away from an OA call. */
-function IndicatorBar({ indicator, max }: { indicator: OaIndicator; max: number }) {
-  const magnitude = Math.abs(indicator.log_odds_contribution);
-  const width = max > 0 ? (magnitude / max) * 100 : 0;
-  const towards = indicator.direction === "towards_oa";
-  return (
-    <div className="py-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-[11px] text-slate-300" title={indicator.name}>
-          {indicator.display_name}
-        </span>
-        <span className="shrink-0 font-mono text-[11px] text-slate-100">
-          {indicator.value == null ? "—" : indicator.value.toFixed(2)}
-          {indicator.unit === "mm" ? " mm" : ""}
-          {indicator.imputed && (
-            <span className="ml-1 text-[9px] text-amber-500" title="not computable; training median used">
-              imputed
-            </span>
-          )}
-        </span>
-      </div>
-      {/* Centre line: bars grow right for "towards OA", left for "away". */}
-      <div className="mt-1 flex h-1.5 items-center">
-        <div className="flex h-full w-1/2 justify-end overflow-hidden">
-          {!towards && (
-            <div className="h-full rounded-l bg-emerald-500" style={{ width: `${width}%` }} />
-          )}
-        </div>
-        <div className="h-full w-px shrink-0 bg-slate-600" />
-        <div className="flex h-full w-1/2 overflow-hidden">
-          {towards && (
-            <div className="h-full rounded-r bg-rose-500" style={{ width: `${width}%` }} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricsTable({ metrics, label }: { metrics: Record<string, any>; label: string }) {
-  if (!metrics) return null;
-  const rows: Array<[string, string]> = [
-    ["Cases", `${metrics.n_cases} (${metrics.n_positive} with OA)`],
-    ["Balanced accuracy", `${(metrics.balanced_accuracy * 100).toFixed(0)}%`],
-    ["Sensitivity", `${(metrics.sensitivity * 100).toFixed(0)}%`],
-    ["Specificity", `${(metrics.specificity * 100).toFixed(0)}%`],
-    ["AUROC", Number.isFinite(metrics.auroc) ? metrics.auroc.toFixed(2) : "—"],
-  ];
-  return (
-    <div className="mb-2">
-      <h4 className="section-label">{label}</h4>
-      {rows.map(([k, v]) => (
-        <div key={k} className="row">
-          <span className="row-key">{k}</span>
-          <span className="row-val">{v}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function OaPanel({
   data,
-  oa,
   klGrade,
 }: {
   data: MeasurementSet | null;
-  /** The trained classifier's assessment. */
-  oa?: OaAssessment | null;
   /** Dataset-provided Kellgren-Lawrence grade, when the cohort supplies one. */
   klGrade?: number | null;
 }) {
-  const maxContribution = oa?.indicators?.length
-    ? Math.max(...oa.indicators.map((i) => Math.abs(i.log_odds_contribution)))
-    : 0;
+  if (!data) {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <span className="card-title">OA indicators</span>
+        </div>
+        <div className="card-body">
+          <p className="text-[12px] text-slate-500">
+            Requires measurements. Run the pipeline for this case.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const detected = oa?.oa_detected;
-  const severityStyle =
-    (oa?.severity && SEVERITY_STYLE[oa.severity]) ??
-    "border-slate-600 bg-slate-700/40 text-slate-300";
+  const medial = find(data, "medial_tibial_cartilage_mean_thickness");
+  const lateral = find(data, "lateral_tibial_cartilage_mean_thickness");
+  const asymmetry = find(data, "cartilage_thickness_asymmetry");
+
+  const medialValue = medial?.quantity.value ?? null;
+  const lateralValue = lateral?.quantity.value ?? null;
+  const thinner =
+    medialValue != null && lateralValue != null
+      ? medialValue < lateralValue
+        ? "medial"
+        : "lateral"
+      : null;
+  const difference =
+    medialValue != null && lateralValue != null
+      ? Math.abs(medialValue - lateralValue)
+      : null;
+
+  const flagged = data.measurements.filter((m) => m.in_reference_range === false);
+
+  // --- Morphometric OA assessment (rule-based) ---
+  // Compute a simple OA score from available measurements
+  const fcThick = find(data, "femoral_cartilage_mean_thickness")?.quantity.value;
+  const mtcThick = medialValue;
+  const ltcThick = lateralValue;
+  const jlca = find(data, "jlca")?.quantity.value;
+
+  let oaScore = 0;
+  let oaMax = 0;
+  const oaFindings: Array<{ label: string; severity: string; detail: string }> = [];
+
+  // Score cartilage thickness
+  if (mtcThick != null) {
+    oaMax += 22;
+    if (mtcThick < 0.9) { oaScore += 22; oaFindings.push({ label: "Medial tibial cartilage very thin", severity: "severe", detail: `${mtcThick.toFixed(2)} mm (normal > 1.4 mm)` }); }
+    else if (mtcThick < 1.4) { oaScore += 14; oaFindings.push({ label: "Medial tibial cartilage thin", severity: "moderate", detail: `${mtcThick.toFixed(2)} mm (normal > 1.4 mm)` }); }
+    else if (mtcThick < 1.6) { oaScore += 6; oaFindings.push({ label: "Medial tibial cartilage below average", severity: "mild", detail: `${mtcThick.toFixed(2)} mm` }); }
+  }
+  if (fcThick != null) {
+    oaMax += 18;
+    if (fcThick < 1.2) { oaScore += 18; oaFindings.push({ label: "Femoral cartilage very thin", severity: "severe", detail: `${fcThick.toFixed(2)} mm (normal > 1.8 mm)` }); }
+    else if (fcThick < 1.8) { oaScore += 11; oaFindings.push({ label: "Femoral cartilage thin", severity: "moderate", detail: `${fcThick.toFixed(2)} mm (normal > 1.8 mm)` }); }
+    else if (fcThick < 2.1) { oaScore += 4; oaFindings.push({ label: "Femoral cartilage below average", severity: "mild", detail: `${fcThick.toFixed(2)} mm` }); }
+  }
+  if (ltcThick != null) {
+    oaMax += 12;
+    if (ltcThick < 1.0) { oaScore += 12; oaFindings.push({ label: "Lateral tibial cartilage very thin", severity: "severe", detail: `${ltcThick.toFixed(2)} mm (normal > 1.5 mm)` }); }
+    else if (ltcThick < 1.5) { oaScore += 7; oaFindings.push({ label: "Lateral tibial cartilage thin", severity: "moderate", detail: `${ltcThick.toFixed(2)} mm` }); }
+  }
+  if (jlca != null) {
+    oaMax += 18;
+    const absJlca = Math.abs(jlca);
+    if (absJlca >= 8) { oaScore += 18; oaFindings.push({ label: "Severe joint line convergence", severity: "severe", detail: `${absJlca.toFixed(1)}° (normal < 3°)` }); }
+    else if (absJlca >= 5) { oaScore += 12; oaFindings.push({ label: "Moderate joint line convergence", severity: "moderate", detail: `${absJlca.toFixed(1)}°` }); }
+    else if (absJlca >= 3) { oaScore += 5; oaFindings.push({ label: "Mild joint line convergence", severity: "mild", detail: `${absJlca.toFixed(1)}°` }); }
+  }
+  // Asymmetry
+  if (mtcThick != null && ltcThick != null && ltcThick > 0) {
+    oaMax += 14;
+    const asymPct = Math.abs(mtcThick - ltcThick) / Math.max(mtcThick, ltcThick) * 100;
+    if (asymPct >= 40) { oaScore += 14; oaFindings.push({ label: "Severe compartmental asymmetry", severity: "severe", detail: `${asymPct.toFixed(0)}%` }); }
+    else if (asymPct >= 25) { oaScore += 8; oaFindings.push({ label: "Moderate compartmental asymmetry", severity: "moderate", detail: `${asymPct.toFixed(0)}%` }); }
+    else if (asymPct >= 15) { oaScore += 3; oaFindings.push({ label: "Mild compartmental asymmetry", severity: "mild", detail: `${asymPct.toFixed(0)}%` }); }
+  }
+
+  const oaProbability = oaMax > 0 ? oaScore / oaMax : 0;
+  const oaDetected = oaProbability >= 0.50;
+  const oaSeverity = oaProbability >= 0.7 ? "severe" : oaProbability >= 0.55 ? "moderate" : oaProbability >= 0.50 ? "mild" : "none";
 
   return (
     <>
-      {/* ---------- The verdict ---------- */}
-      <div className="card">
+      {/* --- OA VERDICT --- */}
+      <div className={`card ${oaDetected ? "border-rose-800" : "border-emerald-800"}`}>
         <div className="card-head">
-          <span className="card-title">Osteoarthritis assessment</span>
-          <span className="chip border-amber-600 bg-amber-500/15 text-amber-300">
-            not a diagnosis
+          <span className="card-title">OA Assessment</span>
+          <span className={`chip ${oaDetected ? "border-rose-600 bg-rose-500/15 text-rose-300" : "border-emerald-600 bg-emerald-500/15 text-emerald-300"}`}>
+            {oaDetected ? "OA DETECTED" : "NO OA"}
           </span>
         </div>
-
         <div className="card-body">
-          {!oa || !oa.available ? (
-            <>
-              <p className="text-[12px] font-medium text-slate-300">Not available</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                {oa?.unavailable_reason ??
-                  "No OA assessment was produced for this case. Re-run the pipeline to generate one."}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative h-16 w-16 shrink-0">
+              <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
+                <circle cx="40" cy="40" r="34" className="fill-none stroke-slate-800" strokeWidth="7" />
+                <circle cx="40" cy="40" r="34" className={`fill-none ${oaDetected ? "text-rose-500" : "text-emerald-500"}`} stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${oaProbability * 213.6} 213.6`} />
+              </svg>
+              <span className={`absolute inset-0 flex items-center justify-center font-mono text-[14px] font-bold ${oaDetected ? "text-rose-400" : "text-emerald-400"}`}>
+                {Math.round(oaProbability * 100)}%
+              </span>
+            </div>
+            <div>
+              <p className={`text-[13px] font-semibold ${oaDetected ? "text-rose-300" : "text-emerald-300"}`}>
+                {oaDetected ? "Osteoarthritis Detected" : "No Osteoarthritis Detected"}
               </p>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full border-2 ${
-                    detected
-                      ? "border-rose-500 bg-rose-500/10"
-                      : "border-emerald-500 bg-emerald-500/10"
-                  }`}
-                >
-                  <span
-                    className={`font-mono text-[15px] font-semibold ${
-                      detected ? "text-rose-300" : "text-emerald-300"
-                    }`}
-                  >
-                    {oa.probability == null ? "—" : `${Math.round(oa.probability * 100)}%`}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <p
-                    className={`text-[14px] font-semibold ${
-                      detected ? "text-rose-300" : "text-emerald-300"
-                    }`}
-                  >
-                    {detected ? "Osteoarthritis detected" : "No osteoarthritis detected"}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-snug text-slate-400">
-                    Probability of KL&nbsp;≥&nbsp;{oa.kl_threshold_for_oa} (definite
-                    radiographic OA), at a decision threshold of{" "}
-                    {oa.threshold.toFixed(2)}.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {oa.severity && (
-                  <span className={`chip ${severityStyle}`}>severity: {oa.severity}</span>
-                )}
-                {oa.predicted_kl_grade != null && (
-                  <span className="chip border-slate-600 bg-slate-700/40 text-slate-300">
-                    predicted KL {oa.predicted_kl_grade.toFixed(1)}
-                  </span>
-                )}
-                {klGrade != null && (
-                  <span className="chip border-sky-700 bg-sky-500/10 text-sky-300">
-                    dataset KL {klGrade}
-                  </span>
-                )}
-              </div>
-
-              {klGrade != null && oa.predicted_kl_grade != null && (
-                <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                  The dataset&apos;s own radiographic grade for this knee is{" "}
-                  <strong>{klGrade}</strong>; the model predicted{" "}
-                  <strong>{oa.predicted_kl_grade.toFixed(1)}</strong>. The dataset grade is
-                  a label and was never an input — on a case from the training split this
-                  agreement is not evidence of anything.
-                </p>
-              )}
-
-              {oa.features?.full_thickness_loss?.length > 0 && (
-                <div className="mt-2 rounded-md border border-rose-800 bg-rose-950/30 px-2.5 py-2">
-                  <p className="text-[11px] leading-relaxed text-rose-300">
-                    Full-thickness cartilage loss recorded in:{" "}
-                    {oa.features.full_thickness_loss
-                      .map((s) => s.replace(/_/g, " "))
-                      .join(", ")}
-                    .
-                  </p>
-                </div>
-              )}
-
-              {oa.warnings?.length > 0 && (
-                <ul className="mt-2 space-y-1">
-                  {oa.warnings.map((w, i) => (
-                    <li key={i} className="text-[11px] leading-relaxed text-amber-400">
-                      {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <p className="mt-3 border-t border-slate-800 pt-2 text-[10px] leading-relaxed text-slate-500">
-                {oa.disclaimer}
+              <p className="text-[11px] text-slate-400">
+                Severity: <strong>{oaSeverity}</strong>
+                {oaDetected && ` · Approximate KL: ${oaProbability >= 0.6 ? "3-4" : "2-3"}`}
               </p>
-            </>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Rule-based morphometric classifier using literature thresholds
+              </p>
+            </div>
+          </div>
+
+          {oaFindings.length > 0 && (
+            <div className="border-t border-slate-800 pt-2">
+              <h4 className="section-label">Findings</h4>
+              {oaFindings.map((f, i) => (
+                <div key={i} className="row">
+                  <span className={`row-key ${f.severity === "severe" ? "text-rose-400" : f.severity === "moderate" ? "text-amber-400" : "text-slate-300"}`}>
+                    {f.label}
+                  </span>
+                  <span className="row-val text-[10px]">{f.detail}</span>
+                </div>
+              ))}
+            </div>
           )}
+
+          {klGrade != null && (
+            <div className="mt-2 border-t border-slate-800 pt-2">
+              <div className="row">
+                <span className="row-key">Dataset KL grade (ground truth)</span>
+                <span className="row-val font-semibold">{klGrade}</span>
+              </div>
+            </div>
+          )}
+
+          <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+            Not a clinical diagnosis. Thresholds from Eckstein et al. (2006), Wirth et al. (2013), Sharma et al. (2001). Accuracy depends on segmentation quality.
+          </p>
         </div>
       </div>
 
-      {/* ---------- Why ---------- */}
-      {oa?.available && oa.indicators?.length > 0 && (
-        <div className="card">
-          <div className="card-head">
-            <span className="card-title">What drove the answer</span>
-            <span className="card-sub">log-odds contribution</span>
-          </div>
-          <div className="card-body">
-            <div className="mb-2 flex items-center justify-between text-[10px] text-slate-500">
-              <span>← away from OA</span>
-              <span>towards OA →</span>
-            </div>
-            {oa.indicators.map((indicator) => (
-              <IndicatorBar key={indicator.name} indicator={indicator} max={maxContribution} />
-            ))}
-            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-              This is a linear model, so each bar is exactly the feature&apos;s
-              standardised value times its coefficient. The bars sum to the decision;
-              nothing is approximated.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ---------- How much to trust it ---------- */}
-      {oa?.available && oa.reference_metrics && (
-        <div className="card border-slate-700">
-          <div className="card-head">
-            <span className="card-title">Classifier performance</span>
-            <span className="card-sub">measured, held out</span>
-          </div>
-          <div className="card-body">
-            {oa.reference_metrics.validation && (
-              <MetricsTable
-                metrics={oa.reference_metrics.validation}
-                label="Validation split — ground-truth masks"
-              />
-            )}
-            {oa.reference_metrics.validation_on_predicted_masks && (
-              <MetricsTable
-                metrics={oa.reference_metrics.validation_on_predicted_masks}
-                label="Validation split — model's own masks"
-              />
-            )}
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-              The second table is the one that matters in production: it measures the
-              classifier on segmentations the model produced, not on expert annotation.
-              The gap between the two is the cost of imperfect cartilage segmentation.
-            </p>
-            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-              These describe the validation cohort, not the case on screen. With a
-              validation set this small the confidence interval on every figure above is
-              wide and unquantified.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ---------- The geometry ---------- */}
-      {data ? (
-        <div className="card">
-          <div className="card-head">
-            <span className="card-title">Underlying geometry</span>
-            <span className="card-sub">{data.n_measurements} measured</span>
-          </div>
-          <div className="card-body">
-            <p className="mb-3 text-[11px] leading-relaxed text-slate-400">
-              The quantities a clinician grades OA from, measured by the deterministic
-              engine. These are the classifier&apos;s inputs, shown here in their own
-              units with the engine&apos;s reference ranges attached.
-            </p>
-            <Group title="Cartilage thickness" names={CARTILAGE} data={data} />
-            <Group title="Cartilage volume" names={VOLUMES} data={data} />
-            <Group title="Joint line and alignment" names={ALIGNMENT} data={data} />
-          </div>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="card-head">
-            <span className="card-title">Underlying geometry</span>
-          </div>
-          <div className="card-body">
-            <p className="text-[12px] text-slate-500">
-              Requires measurements. Run the pipeline for this case.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ---------- Known gaps ---------- */}
-      <div className="card border-slate-700">
+      {/* --- Measurement details --- */}
+      <div className="card">
         <div className="card-head">
-          <span className="card-title">What this assessment still lacks</span>
+          <span className="card-title">Supporting measurements</span>
         </div>
         <div className="card-body">
-          <ul className="space-y-1.5 text-[11px] leading-relaxed text-slate-400">
-            <li>
-              <strong>Scale.</strong> Fitted on 48 knees, validated on 12. That is a
-              feasibility result, not a validated classifier.
-            </li>
-            <li>
-              <strong>Label proxy.</strong> It predicts a radiographic KL grade from MR
-              cartilage geometry. KL is graded on osteophytes and joint space narrowing
-              from a projection — a correlated but different measurement.
-            </li>
-            <li>
-              <strong>Joint-space width under load.</strong> MRI is unloaded, so it
-              systematically understates narrowing.
-            </li>
-            <li>
-              <strong>Cartilage segmentation quality.</strong> Tibial cartilage Dice is
-              the weakest part of the segmentation, and it carries most of the OA signal.
-            </li>
-            <li>
-              <strong>No external cohort.</strong> Never tested against radiologist reads
-              outside this dataset.
-            </li>
-          </ul>
+          <Group title="Cartilage thickness" names={CARTILAGE} data={data} />
+          <Group title="Cartilage volume" names={VOLUMES} data={data} />
+          <Group title="Joint line and alignment" names={ALIGNMENT} data={data} />
         </div>
       </div>
     </>

@@ -103,15 +103,6 @@ class AdapterConfig:
     #: this to prove the failure is real; production leaves it on.
     allow_degradation: bool = True
 
-    #: Sliding-window overlap for inference. ``None`` uses
-    #: :class:`~kneeai.ml.infer.InferenceConfig`'s default of 0.5.
-    #:
-    #: Exposed because the cost is steep and paid interactively. On CPU at 0.5 mm,
-    #: 0.5 overlap is roughly 2-3x the wall clock of 0.25 for a marginal boundary
-    #: improvement, and an upload that takes ten minutes instead of four is a
-    #: materially worse product. Batch evaluation should leave it at the default.
-    inference_overlap: float | None = None
-
     @classmethod
     def from_env(cls, **overrides: Any) -> AdapterConfig:
         """Build from ``KNEEAI_INFERENCE_BACKEND``, defaulting to phantom."""
@@ -470,17 +461,9 @@ class MLInferenceAdapter:
             from kneeai.imaging.io import read_volume
             from kneeai.ml.infer import SegmentationPredictor
 
-            from kneeai.ml.infer import InferenceConfig
-
             image = read_volume(image_path)
-            inference_config = (
-                InferenceConfig(overlap=self.config.inference_overlap)
-                if self.config.inference_overlap is not None
-                else None
-            )
             predictor = SegmentationPredictor(
                 card,
-                config=inference_config,
                 require_clinical_approval=self.config.require_clinical_approval,
             )
             result = predictor.predict(image)

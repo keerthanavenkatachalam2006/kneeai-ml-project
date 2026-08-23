@@ -1,0 +1,27 @@
+KneeAI Validation Summary
+==================================================
+
+Model: SegResNet
+Cases: 102
+Time: 1452s
+
+Dice Scores:
+  Femur                    : 0.7940 (+/-0.1271)
+  Femoral Cartilage        : 0.7331 (+/-0.0434)
+  Tibia                    : 0.7472 (+/-0.0568)
+  Medial Tibial Cartilage  : 0.1634 (+/-0.0744)
+  Lateral Tibial Cartilage : 0.3502 (+/-0.0850)
+  OVERALL MEAN             : 0.5576
+
+Measurement MAE (mm):
+  femur_ml            : 10.60 (median 2.10)
+  femur_ap            : 17.78 (median 1.82)
+  tibia_ml            : 3.18 (median 1.40)
+  tibia_ap            : 4.94 (median 1.46)
+  fc_thickness        : 0.53 (median 0.44)
+  mtc_thickness       : 2.12 (median 2.12)
+  ltc_thickness       : 2.05 (median 1.69)
+
+Implant Agreement:
+  Femoral: 44/102 (43%)
+  Tibial:  53/102 (52%)

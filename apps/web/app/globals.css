@@ -12,97 +12,100 @@ body {
 }
 
 body {
-  @apply bg-slate-950 text-slate-200 antialiased;
+  @apply bg-clinic-950 text-slate-100 antialiased;
   /* Tabular figures so measurement columns line up down the page. */
   font-feature-settings: "tnum" 1;
 }
 
 /* Visible focus everywhere — the viewer's controls are all tab-reachable. */
 :focus-visible {
-  @apply outline-none ring-2 ring-sky-500 ring-offset-2 ring-offset-slate-950;
+  @apply outline-none ring-2 ring-teal-400 ring-offset-2 ring-offset-clinic-950;
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-slate-700;
+  @apply rounded-full bg-clinic-700;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  @apply bg-clinic-600;
 }
 
 @layer components {
-  /* --- surfaces --- */
+  /* --- surfaces -----------------------------------------------------------
+     Panels float above the background rather than sitting in a bordered grid:
+     a soft shadow and a very low-contrast hairline, so the eye goes to content. */
   .card {
-    @apply rounded-lg border border-slate-800 bg-slate-900/70;
+    @apply rounded-panel border border-white/5 bg-clinic-900/80 shadow-panel backdrop-blur-sm;
   }
   .card-head {
-    @apply flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-2.5;
+    @apply flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3;
   }
   .card-title {
-    @apply text-[13px] font-semibold text-slate-100;
+    @apply text-[13px] font-semibold tracking-tight text-white;
   }
   .card-sub {
-    @apply text-[11px] text-slate-500;
+    @apply text-[11px] text-teal-200/45;
   }
   .card-body {
-    @apply px-4 py-3;
+    @apply px-4 py-3.5;
   }
 
   /* --- section heading inside a card --- */
   .section-label {
-    @apply mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500;
+    @apply mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-300/55;
   }
 
   /* --- data rows --- */
   .row {
-    @apply flex items-baseline justify-between gap-4 border-b border-slate-800/60 py-1.5 last:border-0;
+    @apply flex items-baseline justify-between gap-4 border-b border-white/[0.04] py-[7px] last:border-0;
   }
   .row-key {
-    @apply min-w-0 truncate text-[12px] text-slate-400;
+    @apply min-w-0 truncate text-[12px] text-teal-100/55;
   }
   .row-val {
-    @apply shrink-0 font-mono text-[12px] tabular-nums text-slate-100;
+    @apply shrink-0 font-mono text-[12px] tabular-nums text-white;
   }
 
   /* --- buttons --- */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-[12px]
-           font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-[12px]
+           font-medium tracking-tight transition-all duration-150
+           disabled:cursor-not-allowed disabled:opacity-35;
   }
   .btn-primary {
-    @apply btn border-sky-500 bg-sky-500 text-white hover:bg-sky-400 hover:border-sky-400;
+    @apply btn border-teal-400 bg-teal-400 text-clinic-950 hover:bg-teal-300 hover:border-teal-300;
   }
   .btn-ghost {
-    @apply btn border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800;
+    @apply btn border-white/10 bg-white/[0.03] text-teal-50 hover:bg-white/[0.08] hover:border-white/20;
   }
   .btn-danger {
-    @apply btn border-rose-600 bg-rose-600 text-white hover:bg-rose-500;
+    @apply btn border-rose-500 bg-rose-500 text-white hover:bg-rose-400;
   }
 
   /* --- chips --- */
   .chip {
-    @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold
            uppercase tracking-wider;
   }
 
   /* --- inputs --- */
   .field {
-    @apply w-full rounded-md border border-slate-700 bg-slate-950 px-2.5 py-2 text-[12px]
-           text-slate-100 placeholder:text-slate-600 focus:border-sky-500;
+    @apply w-full rounded-lg border border-white/10 bg-clinic-950/60 px-3 py-2 text-[12px]
+           text-white placeholder:text-teal-200/25 focus:border-teal-400;
   }
   .field-label {
-    @apply mb-1 block text-[11px] font-medium text-slate-400;
+    @apply mb-1 block text-[11px] font-medium text-teal-100/60;
   }
 
   /* --- viewer overlay controls --- */
   .overlay {
-    @apply rounded-lg border border-slate-700/80 bg-slate-950/85 backdrop-blur;
+    @apply rounded-panel border border-white/10 bg-clinic-900/85 shadow-float backdrop-blur-md;
   }
 }
 

@@ -1,0 +1,87 @@
+{
+  "datasets": [
+    {
+      "name": "OAIZIB-CM",
+      "source": "https://huggingface.co/datasets/YongchengYAO/OAIZIB-CM",
+      "license": "CC BY-NC 4.0",
+      "size_compressed_gb": 12.0,
+      "size_extracted_gb": 24.0,
+      "subjects": 507,
+      "train_count": 404,
+      "test_count": 103,
+      "anatomy_labels": {
+        "1": "Femur",
+        "2": "Femoral Cartilage",
+        "3": "Tibia",
+        "4": "Medial Tibial Cartilage",
+        "5": "Lateral Tibial Cartilage"
+      },
+      "modality": "MRI (3D sagittal DESS)",
+      "voxel_size_mm": [0.7, 0.3646, 0.3646],
+      "image_shape": [160, 384, 384],
+      "intended_use": "Knee bone and cartilage segmentation, OA morphometrics",
+      "oai_derived": true,
+      "corrupted_cases": [454],
+      "status": "downloaded",
+      "local_path": "data/raw/OAIZIB-CM",
+      "citation": "Yao et al., CartiMorph: A framework for automated knee articular cartilage morphometrics, Medical Image Analysis, 2024"
+    },
+    {
+      "name": "SKM-TEA",
+      "source": "https://aimi.stanford.edu/datasets/skm-tea-knee-mri",
+      "license": "Stanford AIMI License",
+      "size_compressed_gb": 900,
+      "size_extracted_gb": 1600,
+      "subjects": 155,
+      "anatomy_labels": {
+        "1": "Patellar Cartilage",
+        "2": "Femoral Cartilage",
+        "3": "Lateral Tibial Cartilage",
+        "4": "Medial Tibial Cartilage",
+        "5": "Lateral Meniscus",
+        "6": "Medial Meniscus"
+      },
+      "modality": "MRI (quantitative DESS, fat/water separated)",
+      "intended_use": "Meniscus segmentation, quantitative MRI",
+      "oai_derived": false,
+      "corrupted_cases": [],
+      "status": "not_downloaded",
+      "reason": "~900GB compressed, exceeds available storage (149GB). Investigate subset options.",
+      "alternative": "Consider using meniscus annotations from smaller public datasets or transfer learning from pretrained models.",
+      "local_path": null,
+      "citation": "Desai et al., SKM-TEA: A Dataset for Accelerated MRI Reconstruction with Dense Image Labels for Quantitative Clinical Evaluation, NeurIPS Datasets 2022"
+    },
+    {
+      "name": "ShapeMed-Knee",
+      "source": "https://huggingface.co/datasets/aagatti/ShapeMedKnee",
+      "license": "Research Use",
+      "size_compressed_gb": 424,
+      "subjects": 9952,
+      "anatomy_labels": {
+        "meshes": "3D femur surface meshes (point clouds)"
+      },
+      "modality": "Derived 3D shapes from OAI MRI",
+      "intended_use": "3D morphological analysis, shape-based OA assessment",
+      "oai_derived": true,
+      "corrupted_cases": [],
+      "status": "not_downloaded",
+      "reason": "~424GB, exceeds available storage. Investigate pretrained shape model or small subset.",
+      "alternative": "Use our own 3D reconstructions from OAIZIB-CM segmentation masks as shape representations.",
+      "local_path": null,
+      "citation": "Gatti et al., ShapeMed-Knee: A Dataset and Neural Shape Model Benchmark for Modeling 3D Femurs, 2024"
+    }
+  ],
+  "storage_constraints": {
+    "drive": "E:",
+    "total_gb": 288,
+    "used_gb": 139,
+    "free_gb": 149,
+    "note": "Only OAIZIB-CM fits within storage budget. Alternative approaches needed for SKM-TEA and ShapeMed-Knee."
+  },
+  "data_integrity": {
+    "patient_level_split": true,
+    "split_strategy": "Pre-defined by dataset authors (404 train / 103 test). No patient overlap.",
+    "excluded_cases": [454],
+    "exclusion_reason": "Case 454 identified as corrupted by dataset maintainers (Feb 2025)"
+  }
+}

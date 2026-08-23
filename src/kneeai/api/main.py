@@ -37,7 +37,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from kneeai.config import get_settings
-from kneeai.core.anatomy import Modality, Side
 from kneeai.core.errors import GuardrailViolation, KneeAIError
 from kneeai.logging import configure_logging, get_logger
 from kneeai.ml.contract import ArtifactSource, validate_result_json
@@ -406,154 +405,6 @@ def case_summary(case_id: str) -> dict[str, Any]:
     }
 
 
-@app.post("/api/upload")
-async def upload_scan(
-    file: UploadFile = File(..., description="NIfTI, DICOM zip, single DICOM, or a 2D radiograph"),
-    side: str = Form("unknown", description="Operative side: left, right or unknown"),
-    case_id: str | None = Form(None, description="Optional; generated when omitted"),
-    modality: str | None = Form(None, description="Optional override: MR, CT, CR, DX"),
-) -> dict[str, Any]:
-    """Accept a scan and start processing it. Returns immediately.
-
-    The response carries the ``case_id`` to poll. Nothing is computed inside this
-    handler: segmentation alone is 30-60 s on CPU, and holding a request open for
-    that long fails badly behind any proxy.
-
-    Note the deliberate asymmetry with the rest of this API — every other endpoint
-    reads artefacts, and this one creates them. It is the only writer of new cases,
-    which is why it is also the only endpoint that validates an operator-supplied
-    ``side``: a wrong side here propagates into the plan as a wrong-site error.
-    """
-    from kneeai.api.upload import (
-        MAX_UPLOAD_BYTES,
-        UploadJob,
-        get_registry,
-        new_case_id,
-        process_upload,
-    )
-
-    try:
-        resolved_side = Side(side.strip().lower()) if side else Side.UNKNOWN
-    except ValueError:
-        raise HTTPException(
-            400, f"side must be one of {[s.value for s in Side]}, got {side!r}"
-        ) from None
-
-    resolved_modality: Modality | None = None
-    if modality:
-        try:
-            resolved_modality = Modality(modality.strip().upper())
-        except ValueError:
-            raise HTTPException(
-                400,
-                f"modality must be one of {[m.value for m in Modality]}, got {modality!r}",
-            ) from None
-
-    cid = _safe_case_id(case_id.strip()) if case_id and case_id.strip() else new_case_id()
-
-    registry = get_registry()
-    if registry.get(cid) is not None:
-        raise HTTPException(409, f"case id {cid!r} is already in use")
-    for base in _case_roots():
-        if (base / cid / "result.json").exists():
-            raise HTTPException(409, f"case id {cid!r} already exists on disk")
-
-    # Uploads land under artifacts/live/, which _case_roots() already searches.
-    live_root = Path(get_settings().artifact_root) / "live"
-    staging = live_root / "uploads" / cid
-    staging.mkdir(parents=True, exist_ok=True)
-
-    filename = Path(file.filename or "upload.bin").name
-    target = staging / filename
-
-    # Stream to disk with a running size check, so an oversized upload is stopped
-    # partway rather than after it has been fully buffered.
-    written = 0
-    try:
-        with target.open("wb") as handle:
-            while chunk := await file.read(1024 * 1024):
-                written += len(chunk)
-                if written > MAX_UPLOAD_BYTES:
-                    handle.close()
-                    target.unlink(missing_ok=True)
-                    raise HTTPException(
-                        413,
-                        f"upload exceeds the {MAX_UPLOAD_BYTES // 1_000_000} MB limit",
-                    )
-                handle.write(chunk)
-    finally:
-        await file.close()
-
-    if written == 0:
-        target.unlink(missing_ok=True)
-        raise HTTPException(400, "the uploaded file is empty")
-
-    job = registry.create(
-        UploadJob(
-            case_id=cid,
-            filename=filename,
-            bytes_size=written,
-            side=resolved_side.value,
-        )
-    )
-    registry.submit(
-        cid,
-        process_upload,
-        case_id=cid,
-        original=target,
-        case_root=live_root,
-        side=resolved_side,
-        modality_hint=resolved_modality,
-    )
-
-    log.info(
-        "upload accepted",
-        fields={
-            "case_id": cid,
-            "filename": filename,
-            "bytes": written,
-            "side": resolved_side.value,
-            "queue_depth": registry.queue_depth(),
-        },
-    )
-    return {
-        **job.to_dict(),
-        "queue_depth": registry.queue_depth(),
-        "poll": f"/api/uploads/{cid}",
-        "note": (
-            "Processing runs on a single background worker. Poll the 'poll' URL "
-            "until 'terminal' is true, then load the case."
-        ),
-        "disclaimer": DISCLAIMER,
-    }
-
-
-@app.get("/api/uploads")
-def list_uploads() -> dict[str, Any]:
-    """Every upload this process has seen. In-memory, so it resets on restart."""
-    from kneeai.api.upload import get_registry
-
-    registry = get_registry()
-    jobs = registry.all()
-    return {
-        "n_jobs": len(jobs),
-        "queue_depth": registry.queue_depth(),
-        "jobs": [j.to_dict() for j in jobs],
-    }
-
-
-@app.get("/api/uploads/{case_id}")
-def upload_status(case_id: str) -> dict[str, Any]:
-    """Progress for one upload."""
-    from kneeai.api.upload import get_registry
-
-    cid = _safe_case_id(case_id)
-    job = get_registry().get(cid)
-    if job is None:
-        raise HTTPException(404, f"no upload job for case {cid!r}")
-    return job.to_dict()
-
-
 @app.get("/api/cases/{case_id}/artifacts/{name}")
 def case_artifact(case_id: str, name: str) -> Any:
     if name not in ARTIFACTS:
@@ -905,6 +756,90 @@ def _domain_error(_request: Any, exc: KneeAIError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc), "type": type(exc).__name__})
 
 
+# ---------------------------------------------------------------------------
+# Pipeline trigger (bridge from existing segmentation model)
+# ---------------------------------------------------------------------------
+
+
+class PipelineRequest(BaseModel):
+    """Request to run the unified pipeline for a case."""
+
+    case_id: str = Field(..., min_length=1, description="Case identifier (e.g. oaizib_001)")
+    strategy: str = Field("restricted_kinematic", description="Alignment strategy")
+    side: str = Field("right", description="Operative side: right or left")
+    compare_legacy: bool = Field(False, description="Also run the legacy analysis for comparison")
+
+
+@app.post("/api/pipeline/run")
+def trigger_pipeline(body: PipelineRequest) -> dict[str, Any]:
+    """Run the unified pipeline on a case: segmentation → planning → simulation.
+
+    This endpoint bridges the existing backend segmentation model into the new
+    planning pipeline. It:
+    1. Loads the NIfTI image for the given case_id
+    2. Runs the trained SegResNet model
+    3. Feeds the result through landmarks, measurement, implant matching, planning,
+       and simulation
+    4. Writes all artifacts to the case directory
+
+    WARNING: This runs inference synchronously. On CPU, a single case takes 30-40s.
+    A production deployment should queue this via the worker.
+    """
+    from kneeai.bridge import BridgeConfig, run_bridge_pipeline
+
+    cid = _safe_case_id(body.case_id)
+    settings = get_settings()
+
+    config = BridgeConfig(
+        data_root=settings.data_root / "processed" / "extracted",
+        artifact_root=settings.artifact_root,
+        strategy=body.strategy,
+        side=body.side,
+        run_legacy_comparison=body.compare_legacy,
+    )
+
+    try:
+        result = run_bridge_pipeline(case_id=cid, config=config)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        log.error("pipeline failed", fields={"case_id": cid, "error": str(exc)})
+        raise HTTPException(500, f"pipeline failed: {type(exc).__name__}: {exc}") from exc
+
+    return {
+        "case_id": cid,
+        "case_dir": result.get("case_dir"),
+        "planned": result.get("stages", {}).get("pipeline", {}).get("planned"),
+        "total_time_s": result.get("total_time_s"),
+        "warnings_count": len(result.get("warnings", [])),
+        "artifact_paths": result.get("artifact_paths", {}),
+        "banner": SIMULATION_ONLY_BANNER,
+        "disclaimer": DISCLAIMER,
+    }
+
+
+@app.get("/api/pipeline/cases")
+def available_pipeline_cases() -> dict[str, Any]:
+    """List case IDs available in the dataset for pipeline processing."""
+    settings = get_settings()
+    data_root = settings.data_root / "processed" / "extracted"
+    cases: list[dict[str, str]] = []
+
+    for subdir in ("imagesTr", "imagesTs"):
+        folder = data_root / subdir
+        if not folder.is_dir():
+            continue
+        for f in sorted(folder.glob("*_0000.nii.gz")):
+            case_id = f.name.replace("_0000.nii.gz", "")
+            cases.append({"case_id": case_id, "split": subdir.replace("images", "").lower()})
+
+    return {
+        "n_cases": len(cases),
+        "cases": cases,
+        "data_root": str(data_root),
+    }
+
+
 @app.get("/", include_in_schema=False)
 def root() -> Response:
     return JSONResponse(
@@ -916,3 +851,122 @@ def root() -> Response:
             "disclaimer": DISCLAIMER,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Upload: accept a scan from the browser and process it in the background
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/upload")
+async def upload_scan(
+    file: UploadFile = File(..., description="NIfTI, DICOM zip, single DICOM, or a 2D radiograph"),
+    side: str = Form("unknown", description="Operative side: left, right or unknown"),
+    case_id: str | None = Form(None, description="Optional; generated when omitted"),
+    modality: str | None = Form(None, description="Optional override: MR, CT, CR, DX"),
+) -> dict[str, Any]:
+    """Accept a scan and start processing it. Returns immediately.
+
+    The response carries the ``case_id`` to poll. Nothing is computed inside this
+    handler; a single background worker runs inference and planning.
+    """
+    from kneeai.api.upload import (
+        MAX_UPLOAD_BYTES,
+        UploadJob,
+        get_registry,
+        new_case_id,
+        process_upload,
+    )
+    from kneeai.core.anatomy import Modality, Side
+
+    registry = get_registry()
+
+    cid = case_id or new_case_id()
+    cid = _safe_case_id(cid)
+
+    # Reject duplicates
+    settings = get_settings()
+    for root_path in _case_roots():
+        if (root_path / cid).exists():
+            raise HTTPException(409, f"case id {cid!r} already exists on disk")
+
+    live_root = Path(settings.artifact_root) / "live"
+    staging = live_root / "uploads" / cid
+    staging.mkdir(parents=True, exist_ok=True)
+
+    filename = Path(file.filename or "upload.bin").name
+    target = staging / filename
+
+    written = 0
+    with target.open("wb") as handle:
+        while chunk := await file.read(1024 * 1024):
+            written += len(chunk)
+            if written > MAX_UPLOAD_BYTES:
+                handle.close()
+                target.unlink(missing_ok=True)
+                raise HTTPException(
+                    413,
+                    f"upload exceeds the {MAX_UPLOAD_BYTES // 1_000_000} MB limit",
+                )
+            handle.write(chunk)
+
+    if written == 0:
+        target.unlink(missing_ok=True)
+        raise HTTPException(400, "the uploaded file is empty")
+
+    job = registry.create(
+        UploadJob(
+            case_id=cid,
+            filename=filename,
+            bytes_size=written,
+            side=side,
+        )
+    )
+    resolved_side = Side(side) if side in ("left", "right") else Side.UNKNOWN
+    modality_hint = Modality(modality) if modality else None
+
+    registry.submit(
+        cid,
+        process_upload,
+        case_id=cid,
+        original=target,
+        case_root=live_root,
+        side=resolved_side,
+        modality_hint=modality_hint,
+    )
+
+    log.info(
+        "upload accepted",
+        fields={"case_id": cid, "filename": filename, "bytes": written, "side": side},
+    )
+    return {
+        **job.to_dict(),
+        "queue_depth": registry.queue_depth(),
+        "poll": f"/api/uploads/{cid}",
+        "note": (
+            "Processing runs on a single background worker. Poll the 'poll' URL "
+            "for progress until 'terminal' is true."
+        ),
+    }
+
+
+@app.get("/api/uploads")
+def list_uploads() -> dict[str, Any]:
+    """Every upload this process has seen. In-memory, so it resets on restart."""
+    from kneeai.api.upload import get_registry
+
+    registry = get_registry()
+    jobs = registry.all()
+    return {"jobs": [j.to_dict() for j in jobs], "queue_depth": registry.queue_depth()}
+
+
+@app.get("/api/uploads/{case_id}")
+def upload_status(case_id: str) -> dict[str, Any]:
+    """Progress for one upload."""
+    from kneeai.api.upload import get_registry
+
+    cid = _safe_case_id(case_id)
+    job = get_registry().get(cid)
+    if job is None:
+        raise HTTPException(404, f"no upload job for case {cid!r}")
+    return job.to_dict()

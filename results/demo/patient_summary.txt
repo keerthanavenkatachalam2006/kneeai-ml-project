@@ -1,0 +1,96 @@
+================================================================
+  KNEEAI — AI-ASSISTED KNEE ANALYSIS REPORT
+  Prototype System | For Research/Clinical Review Only
+================================================================
+
+  Case ID:    405
+  Age:        72
+  Gender:     Female
+  BMI:        28.6
+  KL Grade:   0 (from clinical metadata)
+  Knee Side:  right
+
+----------------------------------------------------------------
+  AI SEGMENTATION RESULTS
+----------------------------------------------------------------
+    Femur                        DETECTED  (AI model)
+    Femoral Cartilage            DETECTED  (AI model)
+    Tibia                        DETECTED  (AI model)
+    Medial Tibial Cartilage      DETECTED  (AI model)
+    Lateral Tibial Cartilage     DETECTED  (AI model)
+    Medial Meniscus              DETECTED  (anatomical estimation)
+
+----------------------------------------------------------------
+  ANATOMICAL MEASUREMENTS
+----------------------------------------------------------------
+    Femur condyle ML width:     68.6 mm
+    Femur condyle AP depth:     52.9 mm
+    Tibia plateau ML width:     61.6 mm
+    Tibia plateau AP depth:     44.1 mm
+    Femoral cartilage thickness: 5.42 mm (mean)
+    Medial tibial cart. thick.:  7.37 mm (mean)
+    Lateral tibial cart. thick.: 5.84 mm (mean)
+    Medial meniscus thickness:   2.79 mm (mean)
+      Anterior: 4.7 mm | Body: 2.2 mm | Posterior: 2.1 mm
+
+----------------------------------------------------------------
+  OA MORPHOMETRIC ASSESSMENT
+----------------------------------------------------------------
+    Severity:     normal
+    Approx KL:    0
+    Clinical KL:  0 (No OA (Normal))
+      No morphometric abnormalities detected.
+
+----------------------------------------------------------------
+  IMPLANT CANDIDATE RANKING
+----------------------------------------------------------------
+
+    FEMORAL COMPONENT:
+      #1  Smith & Nephew LEGION Size 2
+          Fit score:    38%  (underhang_risk)
+          ML mismatch:  -12.1 mm
+          AP mismatch:  +0.1 mm
+      #2  Zimmer Biomet NexGen Size C
+          Fit score:    33%  (underhang_risk)
+          ML mismatch:  -12.6 mm
+          AP mismatch:  -0.9 mm
+      #3  Zimmer Biomet NexGen Size D
+          Fit score:    28%  (overhang_risk)
+          ML mismatch:  -9.6 mm
+          AP mismatch:  +3.1 mm
+
+    RECOMMENDED CANDIDATE: Smith & Nephew LEGION Size 2
+    REASON: Smith & Nephew LEGION Size 2: ML=56.5mm, AP=53.0mm. ML width 12.1mm narrower than bone - incomplete medial-lateral coverage. AP depth matches well (+0.1mm). Overall: Undercoverage may compromise fixation.
+
+    TIBIAL COMPONENT:
+      #1  Smith & Nephew LEGION Size 2
+          Fit score:    91%  (optimal)
+          ML mismatch:  -1.6 mm
+          AP mismatch:  -0.1 mm
+      #2  Zimmer Biomet NexGen Size C
+          Fit score:    86%  (acceptable)
+          ML mismatch:  -2.6 mm
+          AP mismatch:  -0.1 mm
+      #3  Stryker Triathlon Size 2
+          Fit score:    83%  (optimal)
+          ML mismatch:  -0.6 mm
+          AP mismatch:  +1.9 mm
+
+    RECOMMENDED CANDIDATE: Smith & Nephew LEGION Size 2
+    REASON: Smith & Nephew LEGION Size 2: ML=60.0mm, AP=44.0mm. ML width matches well (-1.6mm). AP depth matches well (-0.1mm). Overall: Excellent dimensional match.
+
+----------------------------------------------------------------
+  DISCLAIMER
+----------------------------------------------------------------
+    This is a research prototype for AI-assisted anatomical
+    measurement and implant size matching. Results are for
+    clinical review only and do NOT constitute a surgical
+    recommendation. Clinical implant sizing requires
+    intraoperative measurements, surgeon judgment, and
+    manufacturer-specific templates.
+
+    Methodology: MONAI SegResNet trained on OAIZIB-CM (507 knees).
+    Meniscus: Anatomical estimation (not dedicated trained model).
+    Implant DB: Approximate dimensions from surgical technique guides.
+
+================================================================

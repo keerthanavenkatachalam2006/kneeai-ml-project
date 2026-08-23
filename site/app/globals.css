@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Anchored sections must clear the sticky nav and the notice above it. */
+  scroll-padding-top: 6.5rem;
+}
+
+body {
+  @apply bg-paper text-ink-600 antialiased;
+  font-feature-settings: "tnum" 1;
+}
+
+:focus-visible {
+  @apply outline-none ring-2 ring-brand-400 ring-offset-2 ring-offset-white;
+}
+
+@layer components {
+  /* --- layout ------------------------------------------------------------- */
+  .shell {
+    @apply mx-auto w-full max-w-6xl px-6;
+  }
+  .section {
+    @apply py-20 md:py-28;
+  }
+  .section-soft {
+    @apply bg-paper-soft;
+  }
+
+  /* --- type --------------------------------------------------------------- */
+  .eyebrow {
+    @apply mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-brand-500;
+  }
+  .h1 {
+    @apply text-[38px] font-semibold leading-[1.05] tracking-[-0.02em] text-ink-900 md:text-[60px];
+  }
+  .h2 {
+    @apply text-[26px] font-semibold leading-[1.15] tracking-[-0.015em] text-ink-900 md:text-[38px];
+  }
+  .h3 {
+    @apply text-[16px] font-semibold tracking-[-0.01em] text-ink-900;
+  }
+  .lede {
+    @apply max-w-reading text-[15px] leading-relaxed text-ink-500 md:text-[16px];
+  }
+  .body {
+    @apply text-[13.5px] leading-relaxed text-ink-500;
+  }
+
+  /* --- buttons ------------------------------------------------------------ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[12.5px]
+           font-semibold uppercase tracking-[0.08em] transition-all duration-150;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-card hover:bg-brand-700;
+  }
+  .btn-outline {
+    @apply btn border border-ink-200 bg-white text-ink-800 hover:border-brand-300 hover:text-brand-700;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-brand-600 transition-colors hover:text-brand-700;
+  }
+
+  /* --- surfaces ----------------------------------------------------------- */
+  .card {
+    @apply rounded-card border border-ink-200/70 bg-white shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1
+           text-[11px] font-medium text-ink-500;
+  }
+  .code {
+    @apply rounded bg-ink-900/[0.06] px-1.5 py-0.5 font-mono text-[11.5px] text-ink-800;
+  }
+
+  /* --- product screenshot frame ------------------------------------------- */
+  .frame {
+    @apply overflow-hidden rounded-frame border border-ink-200/80 bg-ink-900 shadow-frame;
+  }
+  .frame-bar {
+    @apply flex items-center gap-2 border-b border-white/10 bg-[#0b2f41] px-3.5 py-2.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

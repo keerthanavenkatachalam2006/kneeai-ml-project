@@ -29,17 +29,9 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  // FormData must NOT get an explicit Content-Type: the browser has to set it
-  // itself so it can append the multipart boundary. Setting it here produces a
-  // body the server cannot parse, with a 422 that looks like a validation bug.
-  const isFormData = typeof FormData !== "undefined" && init?.body instanceof FormData;
-  const headers = isFormData
-    ? (init?.headers ?? {})
-    : { "Content-Type": "application/json", ...(init?.headers ?? {}) };
-
   const response = await fetch(path, {
     ...init,
-    headers,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
   });
 
@@ -114,31 +106,67 @@ export const api = {
   robotCommands: (caseId: string) =>
     request<RobotCommandSequence>(`/api/cases/${encodeURIComponent(caseId)}/robot/commands`),
 
-  /**
-   * Upload a scan and start processing. Resolves as soon as the file is stored —
-   * segmentation happens on a background worker, so poll `uploadStatus` with the
-   * returned `case_id` until `terminal` is true.
-   */
-  uploadScan: (
+  // --- Pipeline trigger (bridge from existing segmentation model) ---
+
+  /** List cases available in the dataset for pipeline processing. */
+  availableCases: () =>
+    request<{ n_cases: number; cases: { case_id: string; split: string }[] }>("/api/pipeline/cases"),
+
+  /** Trigger the unified pipeline for a case. Runs synchronously (30-40s on CPU). */
+  runPipeline: (caseId: string, strategy = "restricted_kinematic", side = "right") =>
+    request<{
+      case_id: string;
+      case_dir: string;
+      planned: boolean;
+      total_time_s: number;
+      warnings_count: number;
+      artifact_paths: Record<string, string>;
+    }>(`/api/pipeline/run`, {
+      method: "POST",
+      body: JSON.stringify({ case_id: caseId, strategy, side }),
+    }),
+
+  // --- Upload ---
+
+  /** Upload a scan file and start processing. Returns immediately with a pollable job. */
+  uploadScan: async (
     file: File,
-    options: { side?: string; caseId?: string; modality?: string } = {},
-  ) => {
-    const body = new FormData();
-    body.append("file", file);
-    body.append("side", options.side ?? "unknown");
-    if (options.caseId) body.append("case_id", options.caseId);
-    if (options.modality) body.append("modality", options.modality);
-    return request<UploadJob & { queue_depth: number; poll: string; note: string }>(
-      "/api/upload",
-      { method: "POST", body },
-    );
+    options: { side?: string; modality?: string; case_id?: string } = {},
+  ): Promise<UploadJob> => {
+    const form = new FormData();
+    form.append("file", file);
+    if (options.side) form.append("side", options.side);
+    if (options.modality) form.append("modality", options.modality);
+    if (options.case_id) form.append("case_id", options.case_id);
+    // Upload directly to FastAPI (bypasses Next.js proxy body size limit)
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+    const response = await fetch(`${apiBase}/api/upload`, { method: "POST", body: form });
+    if (!response.ok) {
+      let detail: string | undefined;
+      try {
+        const body = await response.json();
+        detail = typeof body?.detail === "string" ? body.detail : JSON.stringify(body?.detail);
+      } catch {
+        detail = undefined;
+      }
+      throw new ApiError(detail ?? `${response.status} ${response.statusText}`, response.status, detail);
+    }
+    return (await response.json()) as UploadJob;
   },
 
-  uploadStatus: (caseId: string) =>
-    request<UploadJob>(`/api/uploads/${encodeURIComponent(caseId)}`),
+  /** Poll upload progress. */
+  uploadStatus: async (caseId: string): Promise<UploadJob> => {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+    const response = await fetch(`${apiBase}/api/uploads/${encodeURIComponent(caseId)}`);
+    if (!response.ok) {
+      throw new ApiError(`${response.status}`, response.status);
+    }
+    return (await response.json()) as UploadJob;
+  },
 
+  /** List all uploads. */
   listUploads: () =>
-    request<{ n_jobs: number; queue_depth: number; jobs: UploadJob[] }>("/api/uploads"),
+    request<{ jobs: UploadJob[]; queue_depth: number }>("/api/uploads"),
 };
 
 /** Format a measurement value, or say plainly that it is unavailable. */

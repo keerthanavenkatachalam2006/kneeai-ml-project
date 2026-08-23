@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Knee Intelligence Platform — Research Prototype",
+  title: {
+    default: "MORP — Morphometry · Reconstruction · Planning",
+    template: "%s · MORP",
+  },
   description:
     "AI knee segmentation, 3D reconstruction, measurement, implant matching, surgical planning and robotic simulation. Research prototype, not a medical device.",
 };

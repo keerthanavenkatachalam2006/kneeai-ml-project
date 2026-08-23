@@ -3,6 +3,10 @@
 # Local development targets the deterministic core (imaging, geometry,
 # measurements, implants, planning, simulation, safety). Model training runs on
 # Google Colab: see notebooks/.
+#
+# POSIX ONLY. This file needs `make`, and $(BIN) below assumes a Unix virtualenv
+# layout (.venv/bin, not .venv\Scripts). On Windows use ./morp.ps1 instead, which
+# carries the same target names:  .\morp.ps1 help
 
 PYTHON ?= python3.11
 VENV   ?= .venv
@@ -83,40 +87,6 @@ infer: ## Segment + plan one real OAIZIB-CM case with the trained model
 model-card: ## Rebuild the model card from the training history
 	$(BIN)/python scripts/write_model_card.py
 
-# ---------------------------------------------------------------------------
-# The externally supplied checkpoint (best_model.pth)
-# ---------------------------------------------------------------------------
-.PHONY: identify-model
-identify-model: ## Recover an unlabelled checkpoint's config by scoring against ground truth
-	$(BIN)/python scripts/identify_checkpoint.py --cases 417 --spacings 1.0 0.5
-
-.PHONY: diagnose-model
-diagnose-model: ## Confusion matrix + axis-flip search for the active checkpoint
-	$(BIN)/python scripts/diagnose_checkpoint.py --case 417 --spacing 0.5
-
-.PHONY: register-model
-register-model: ## Wrap + register best_model.pth and point the adapter at it
-	$(BIN)/python scripts/register_best_model.py --activate
-
-.PHONY: evaluate-model
-evaluate-model: ## Measure the active model on the held-out val split (slow: ~3 min/case)
-	$(BIN)/python scripts/evaluate_segresnet.py
-
-# ---------------------------------------------------------------------------
-# OA classifier
-# ---------------------------------------------------------------------------
-.PHONY: oa-train
-oa-train: ## Fit the OA classifier on ground-truth masks vs the cohort's KL grades
-	$(BIN)/python scripts/train_oa_classifier.py
-
-.PHONY: oa-train-honest
-oa-train-honest: ## Refit and score on the model's OWN masks (needs evaluate-model first)
-	$(BIN)/python scripts/train_oa_classifier.py --predicted-masks artifacts/val_predictions
-
-.PHONY: backfill
-backfill: ## Add oa.json + robotic_readiness.json to existing cases (no inference)
-	$(BIN)/python scripts/backfill_case.py
-
 .PHONY: notebook
 notebook: ## Regenerate the Colab training notebook
 	$(BIN)/python scripts/make_colab_notebook.py
@@ -136,6 +106,22 @@ registry: ## Validate the dataset registry
 .PHONY: web
 web: ## Run the Next.js surgeon dashboard
 	cd apps/web && npm run dev
+
+.PHONY: site
+site: ## Run the public showcase site (explains the project; no API, port 3001)
+	cd site && npm run dev
+
+.PHONY: site-install
+site-install: ## Install showcase site dependencies
+	cd site && npm install
+
+.PHONY: site-build
+site-build: ## Static export of the showcase site to site/out
+	cd site && npm run build
+
+.PHONY: site-shots
+site-shots: ## Retake the showcase screenshots (needs 'make api' and 'make web' running)
+	cd site && npm run shots
 
 .PHONY: web-install
 web-install: ## Install web dependencies

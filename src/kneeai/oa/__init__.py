@@ -17,6 +17,7 @@ from kneeai.oa.assess import (
     OA_DISCLAIMER,
     OaAssessment,
     assess_oa,
+    assess_oa_from_measurements,
     classifier_path,
     load_classifier,
 )
@@ -30,9 +31,16 @@ from kneeai.oa.classifier import (
     severity_for,
 )
 from kneeai.oa.features import FEATURE_NAMES, OaFeatures, extract_features
+from kneeai.oa.morphometric_classifier import (
+    MorphometricOaClassifier,
+    MorphometricOaPrediction,
+    predict_oa_from_measurements,
+)
 
 __all__ = [
     "FEATURE_NAMES",
+    "MorphometricOaClassifier",
+    "MorphometricOaPrediction",
     "OA_DISCLAIMER",
     "OA_KL_THRESHOLD",
     "BinaryMetrics",
@@ -41,10 +49,12 @@ __all__ = [
     "OaClassifier",
     "OaFeatures",
     "assess_oa",
+    "assess_oa_from_measurements",
     "classifier_path",
     "evaluate_binary",
     "extract_features",
     "fit_logistic",
     "load_classifier",
+    "predict_oa_from_measurements",
     "severity_for",
 ]

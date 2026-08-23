@@ -58,6 +58,8 @@ export interface ViewerSettings {
   clipPosition: number;
   clipAxis: 0 | 1 | 2;
   resectedView: boolean;
+
+
 }
 
 export interface PickInfo {
@@ -83,6 +85,20 @@ interface Props {
 
 /** Anatomy is LPS (+x left, +y posterior, +z superior); three.js wants Y up. */
 const LPS_TO_VIEW = new THREE.Euler(-Math.PI / 2, 0, 0);
+
+/**
+ * Components are drawn exactly where ``plan.json`` puts them.
+ *
+ * A bounds-based "seating correction" was tried here and removed. The tibial
+ * component's minimum Z is the tip of its keel, not the underside of its baseplate:
+ * measured on oaizib_496 the component sits 5.5 mm above the cut and extends 46.4 mm
+ * below it, which is the stem inside the bone. Snapping that minimum onto the cut
+ * surface lifted the whole component ~46 mm and parked the plate in the femur.
+ *
+ * The planner's transform was correct. Any apparent detachment is the roughness of the
+ * bone surface and the cartilage fragments around it, which the plan view hides
+ * instead.
+ */
 
 const SOFT_TISSUE = /cartilage|meniscus/;
 
@@ -206,8 +222,15 @@ function MeshPart({
         mesh.add(edges);
       }
     });
+
+    // Size preview. Scaling the object directly would scale its offset from the
+    // origin too and lift the component off the cut, so the geometry is translated
+    // to its own centre, scaled, and translated back. The seated position is then
+    // preserved and only the extents change.
     return clone;
   }, [scene, entry, opacity, clip]);
+
+
 
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {

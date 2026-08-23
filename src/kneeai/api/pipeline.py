@@ -18,7 +18,6 @@ the end so warnings raised by later stages reach it too.
 from __future__ import annotations
 
 import json
-import math
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -134,40 +133,9 @@ class CaseArtifacts:
         return {name: path for name, path in candidates.items() if path.exists()}
 
 
-def _finite(payload: Any) -> Any:
-    """Replace NaN and infinity with ``None``, recursively.
-
-    ``allow_nan=False`` is deliberate — ``NaN`` is not valid JSON and every consumer
-    of these artifacts is a JSON parser — but it turns an unremarkable "this quantity
-    is not computable" into a hard failure that loses the whole case. A
-    non-watertight cartilage surface has undefined volume, which is a legitimate
-    result on a worn joint, and it should not stop the pipeline at the point of
-    writing the mesh quality report.
-
-    ``None`` is the honest encoding: the field exists, the value does not. That is
-    the same convention the measurement engine and the ML contract already use for
-    unavailable numbers, so the sanitisation does not introduce a second dialect.
-    """
-    if isinstance(payload, float):
-        return payload if math.isfinite(payload) else None
-    if isinstance(payload, dict):
-        return {key: _finite(value) for key, value in payload.items()}
-    if isinstance(payload, (list, tuple)):
-        return [_finite(item) for item in payload]
-    # numpy scalars arrive from the geometry engines and are not float instances.
-    if isinstance(payload, np.floating):
-        value = float(payload)
-        return value if math.isfinite(value) else None
-    if isinstance(payload, np.integer):
-        return int(payload)
-    return payload
-
-
 def _write_json(path: Path, payload: Any) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(_finite(payload), indent=2, allow_nan=False, default=str) + "\n"
-    )
+    path.write_text(json.dumps(payload, indent=2, allow_nan=False, default=str) + "\n")
     return path
 
 
@@ -506,7 +474,6 @@ def run_case_pipeline(
             frame=frame.to_dict(),
             mesh_quality=meshes.quality_report(),
             safety_report=safety_payload,
-            oa=artifacts.oa_assessment,
         )
         artifacts.readiness = readiness.to_dict()
         warnings.extend(readiness.warnings)

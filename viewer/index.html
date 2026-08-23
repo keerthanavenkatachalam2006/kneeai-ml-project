@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KneeAI — Explainable Knee Intelligence Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f1a; color: #e0e0e0; overflow: hidden; height: 100vh;
+        }
+
+        /* Layout: left panel | 3D center | right panel */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            height: 100vh;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            background: #151525; border-right: 1px solid #2a2a40;
+            overflow-y: auto; padding: 16px;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            background: #151525; border-left: 1px solid #2a2a40;
+            overflow-y: auto; padding: 16px;
+        }
+
+        /* Center 3D View */
+        .center-view { position: relative; overflow: hidden; }
+        #canvas-container { width: 100%; height: 100%; }
+
+        /* Header bar */
+        .panel-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 0 14px; border-bottom: 1px solid #2a2a40; margin-bottom: 14px;
+        }
+        .panel-header .logo { font-size: 20px; }
+        .panel-header h1 { font-size: 15px; font-weight: 600; color: #fff; }
+        .panel-header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
+
+        /* Sections */
+        .section { margin-bottom: 18px; }
+        .section-title {
+            font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase;
+            letter-spacing: 0.8px; margin-bottom: 8px; padding-bottom: 4px;
+            border-bottom: 1px solid #2a2a40;
+        }
+
+        /* Patient card */
+        .patient-card {
+            background: linear-gradient(135deg, #1a2040, #1a1a30);
+            border: 1px solid #3a3a60; border-radius: 10px; padding: 14px;
+        }
+        .patient-card .name { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+        .patient-card .field { font-size: 12px; margin: 3px 0; display: flex; justify-content: space-between; }
+        .patient-card .field .lbl { color: #888; }
+        .patient-card .field .val { color: #ccc; font-weight: 500; }
+
+        /* Toggle controls */
+        .toggle-item {
+            display: flex; align-items: center; padding: 5px 6px;
+            border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.15s;
+        }
+        .toggle-item:hover { background: rgba(255,255,255,0.04); }
+        .toggle-item input { margin-right: 8px; accent-color: #4fc3f7; }
+        .color-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; display: inline-block; }
+
+        /* Measurements */
+        .meas-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+        }
+        .meas-item {
+            background: rgba(0,0,0,0.25); border-radius: 6px; padding: 8px 10px;
+        }
+        .meas-item .meas-label { font-size: 10px; color: #888; margin-bottom: 2px; }
+        .meas-item .meas-value { font-size: 14px; font-weight: 600; color: #4fc3f7; }
+        .meas-item .meas-unit { font-size: 10px; color: #666; }
+
+        /* OA badge */
+        .oa-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(76,175,80,0.15); border: 1px solid rgba(76,175,80,0.3);
+            border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 500;
+        }
+        .oa-badge.warning { background: rgba(255,152,0,0.15); border-color: rgba(255,152,0,0.3); }
+        .oa-badge.severe { background: rgba(244,67,54,0.15); border-color: rgba(244,67,54,0.3); }
+        .oa-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; }
+        .oa-badge.warning .dot { background: #ff9800; }
+        .oa-badge.severe .dot { background: #f44336; }
+
+        /* Implant cards */
+        .implant-card {
+            background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px;
+            margin-bottom: 8px; border: 1px solid transparent; transition: border 0.2s;
+        }
+        .implant-card.best { border-color: rgba(76,175,80,0.5); background: rgba(76,175,80,0.05); }
+        .implant-card .implant-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .implant-card .implant-name { font-size: 12px; font-weight: 600; color: #fff; }
+        .implant-card .implant-score {
+            font-size: 11px; font-weight: 700; padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .implant-card .implant-score.optimal { background: rgba(76,175,80,0.2); color: #66ff66; }
+        .implant-card .implant-score.acceptable { background: rgba(255,193,7,0.2); color: #ffd700; }
+        .implant-card .implant-score.risk { background: rgba(244,67,54,0.2); color: #ff6666; }
+        .implant-card .implant-details { font-size: 11px; color: #888; line-height: 1.6; }
+        .implant-card .mismatch { display: flex; gap: 12px; margin-top: 4px; }
+        .implant-card .mismatch span { font-size: 11px; }
+        .implant-card .mismatch .good { color: #66ff66; }
+        .implant-card .mismatch .warn { color: #ffd700; }
+        .implant-card .mismatch .bad { color: #ff6666; }
+
+        /* Why this implant */
+        .why-box {
+            background: rgba(79,195,247,0.05); border: 1px solid rgba(79,195,247,0.2);
+            border-radius: 8px; padding: 10px 12px; font-size: 11px; line-height: 1.6;
+            margin-top: 10px; color: #b0d4e8;
+        }
+
+        /* Disclaimer */
+        .disclaimer {
+            font-size: 10px; color: #555; padding: 10px; background: rgba(0,0,0,0.2);
+            border-radius: 6px; margin-top: 12px; line-height: 1.5;
+        }
+
+        /* File load buttons */
+        .load-btn {
+            display: block; width: 100%; padding: 10px; margin-top: 8px;
+            background: rgba(79,195,247,0.1); border: 1px dashed rgba(79,195,247,0.3);
+            border-radius: 8px; color: #4fc3f7; font-size: 11px; text-align: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .load-btn:hover { background: rgba(79,195,247,0.2); border-style: solid; }
+
+        /* 3D overlay info */
+        .viewer-overlay {
+            position: absolute; bottom: 16px; left: 16px; z-index: 5;
+            font-size: 11px; color: #666;
+        }
+
+        /* Loading */
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 100; text-align: center; color: #888;
+        }
+        .spinner {
+            width: 32px; height: 32px; border: 2px solid #333;
+            border-top-color: #4fc3f7; border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Component tabs */
+        .tab-row { display: flex; gap: 4px; margin-bottom: 10px; }
+        .tab-btn {
+            flex: 1; padding: 6px; font-size: 11px; text-align: center;
+            background: rgba(0,0,0,0.3); border: 1px solid #2a2a40; border-radius: 6px;
+            cursor: pointer; color: #888; transition: all 0.2s;
+        }
+        .tab-btn.active { background: rgba(79,195,247,0.1); border-color: #4fc3f7; color: #4fc3f7; }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+        <div class="panel-header">
+            <span class="logo">🦴</span>
+            <div>
+                <h1>KneeAI</h1>
+                <div class="subtitle">Explainable Knee Intelligence Platform</div>
+            </div>
+        </div>
+
+        <!-- Patient Info -->
+        <div class="section">
+            <div class="section-title">Patient</div>
+            <div class="patient-card" id="patient-card">
+                <div class="name" id="patient-name">Load patient data...</div>
+                <div class="field"><span class="lbl">Age</span><span class="val" id="p-age">—</span></div>
+                <div class="field"><span class="lbl">Gender</span><span class="val" id="p-gender">—</span></div>
+                <div class="field"><span class="lbl">BMI</span><span class="val" id="p-bmi">—</span></div>
+                <div class="field"><span class="lbl">KL Grade</span><span class="val" id="p-kl">—</span></div>
+                <div class="field"><span class="lbl">Knee Side</span><span class="val" id="p-side">—</span></div>
+            </div>
+        </div>
+
+        <!-- Structure Toggles -->
+        <div class="section">
+            <div class="section-title">3D Structures</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-femur" checked><span class="color-dot" style="background:#E6D9BF"></span>Femur</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-femoral-cart" checked><span class="color-dot" style="background:#3399FF"></span>Femoral Cartilage</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-tibia" checked><span class="color-dot" style="background:#D9CCB3"></span>Tibia</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-mtc" checked><span class="color-dot" style="background:#FF6666"></span>Medial Tibial Cartilage</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-ltc" checked><span class="color-dot" style="background:#66FF66"></span>Lateral Tibial Cartilage</div>
+            <div class="toggle-item"><input type="checkbox" id="toggle-meniscus" checked><span class="color-dot" style="background:#FFB300"></span>Medial Meniscus</div>
+        </div>
+
+        <!-- OA Assessment -->
+        <div class="section">
+            <div class="section-title">OA Assessment</div>
+            <div id="oa-display"><span style="color:#555;font-size:12px">Load patient data</span></div>
+        </div>
+
+        <!-- Load buttons -->
+        <div class="section">
+            <div class="section-title">Load Data</div>
+            <div class="load-btn" onclick="document.getElementById('file-glb').click()">📂 Load 3D Model (.glb)</div>
+            <input type="file" id="file-glb" accept=".glb,.gltf" style="display:none">
+            <div class="load-btn" onclick="document.getElementById('file-json').click()">📋 Load Patient Profile (.json)</div>
+            <input type="file" id="file-json" accept=".json" style="display:none">
+        </div>
+
+        <div class="disclaimer">
+            Research prototype. Not for clinical decisions.<br>
+            AI measurements are for review only.
+        </div>
+    </div>
+
+    <!-- CENTER 3D VIEW -->
+    <div class="center-view">
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Drag-and-drop or use Load buttons</div>
+        </div>
+        <div id="canvas-container"></div>
+        <div class="viewer-overlay">Rotate: drag | Zoom: scroll | Pan: right-drag</div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        <!-- Measurements -->
+        <div class="section">
+            <div class="section-title">Anatomical Measurements</div>
+            <div class="meas-grid" id="measurements-grid">
+                <div class="meas-item"><div class="meas-label">Femur ML</div><div class="meas-value">—</div></div>
+                <div class="meas-item"><div class="meas-label">Femur AP</div><div class="meas-value">—</div></div>
+                <div class="meas-item"><div class="meas-label">Tibia ML</div><div class="meas-value">—</div></div>
+                <div class="meas-item"><div class="meas-label">Tibia AP</div><div class="meas-value">—</div></div>
+                <div class="meas-item"><div class="meas-label">Fem. Cart.</div><div class="meas-value">—</div></div>
+                <div class="meas-item"><div class="meas-label">Meniscus</div><div class="meas-value">—</div></div>
+            </div>
+        </div>
+
+        <!-- Implant Candidates -->
+        <div class="section">
+            <div class="section-title">Implant Candidates</div>
+            <div class="tab-row">
+                <div class="tab-btn active" id="tab-tibial" onclick="showImplantTab('tibial')">Tibial</div>
+                <div class="tab-btn" id="tab-femoral" onclick="showImplantTab('femoral')">Femoral</div>
+            </div>
+            <div id="implant-list">
+                <div style="color:#555;font-size:12px">Load patient data to see candidates</div>
+            </div>
+        </div>
+
+        <!-- Why This Implant -->
+        <div class="section" id="why-section" style="display:none">
+            <div class="section-title">Why This Implant?</div>
+            <div class="why-box" id="why-content"></div>
+        </div>
+
+        <div class="disclaimer">
+            Implant sizing is AI-assisted anatomical matching.<br>
+            Clinical sizing requires intraoperative assessment,<br>
+            surgeon judgment, and manufacturer templates.
+        </div>
+    </div>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+
+<script>
+// ─── 3D Scene ────────────────────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f0f1a);
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2000);
+camera.position.set(0, 0, 300);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.05;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl1 = new THREE.DirectionalLight(0xffffff, 0.7); dl1.position.set(60, 80, 60); scene.add(dl1);
+const dl2 = new THREE.DirectionalLight(0xffffff, 0.3); dl2.position.set(-60, -40, -60); scene.add(dl2);
+
+const structureMap = {
+    'Femur': 'toggle-femur', 'Femoral_Cartilage': 'toggle-femoral-cart',
+    'Femoral Cartilage': 'toggle-femoral-cart', 'Tibia': 'toggle-tibia',
+    'Medial_Tibial_Cartilage': 'toggle-mtc', 'Medial Tibial Cartilage': 'toggle-mtc',
+    'Lateral_Tibial_Cartilage': 'toggle-ltc', 'Lateral Tibial Cartilage': 'toggle-ltc',
+    'Medial_Meniscus': 'toggle-meniscus', 'Medial Meniscus': 'toggle-meniscus',
+};
+
+let meshes = {};
+let patientData = null;
+let currentTab = 'tibial';
+
+function loadGLB(buffer) {
+    const loader = new THREE.GLTFLoader();
+    loader.parse(buffer, '', (gltf) => {
+        Object.values(meshes).forEach(m => scene.remove(m));
+        meshes = {};
+        gltf.scene.traverse((child) => {
+            if (child.isMesh) {
+                const name = child.name || child.parent?.name || 'Unknown';
+                scene.add(child);
+                meshes[name] = child;
+                const tid = structureMap[name];
+                if (tid) {
+                    const cb = document.getElementById(tid);
+                    if (cb) child.visible = cb.checked;
+                }
+            }
+        });
+        // Center camera
+        const box = new THREE.Box3();
+        Object.values(meshes).forEach(m => box.expandByObject(m));
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        camera.position.set(center.x + size.x * 0.5, center.y + size.y * 0.3, center.z + Math.max(size.x, size.y, size.z) * 1.3);
+        controls.target.copy(center);
+        controls.update();
+        document.getElementById('loading').style.display = 'none';
+    });
+}
+
+function loadPatientProfile(json) {
+    patientData = json;
+    const d = json.demographics || {};
+    document.getElementById('patient-name').textContent = `Case ${json.case_id}`;
+    document.getElementById('p-age').textContent = d.age || '—';
+    document.getElementById('p-gender').textContent = d.gender || '—';
+    document.getElementById('p-bmi').textContent = d.bmi ? d.bmi.toFixed(1) : '—';
+    document.getElementById('p-kl').textContent = d.kl_grade ?? '—';
+    document.getElementById('p-side').textContent = d.knee_side || '—';
+
+    // Measurements
+    const m = json.measurements || {};
+    const grid = document.getElementById('measurements-grid');
+    const fml = m.femur?.condyle_ml_width_mm;
+    const fap = m.femur?.condyle_ap_depth_mm;
+    const tml = m.tibia?.plateau_ml_width_mm;
+    const tap = m.tibia?.plateau_ap_depth_mm;
+    const fct = m.femoral_cartilage?.thickness_mean_mm;
+    const men = m.medial_meniscus?.thickness_mean_mm;
+    grid.innerHTML = `
+        <div class="meas-item"><div class="meas-label">Femur ML</div><div class="meas-value">${fml ? fml.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+        <div class="meas-item"><div class="meas-label">Femur AP</div><div class="meas-value">${fap ? fap.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+        <div class="meas-item"><div class="meas-label">Tibia ML</div><div class="meas-value">${tml ? tml.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+        <div class="meas-item"><div class="meas-label">Tibia AP</div><div class="meas-value">${tap ? tap.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+        <div class="meas-item"><div class="meas-label">Fem. Cart.</div><div class="meas-value">${fct ? fct.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+        <div class="meas-item"><div class="meas-label">Meniscus</div><div class="meas-value">${men ? men.toFixed(1) : '—'}<span class="meas-unit"> mm</span></div></div>
+    `;
+
+    // OA
+    const oa = json.oa_assessment || {};
+    const oaDiv = document.getElementById('oa-display');
+    const severity = oa.morphometric_severity || 'unknown';
+    const badgeClass = severity === 'normal' ? '' : (severity === 'severe' ? 'severe' : 'warning');
+    oaDiv.innerHTML = `
+        <div class="oa-badge ${badgeClass}"><span class="dot"></span>${severity} (KL ~${oa.approximate_kl_range || '?'})</div>
+        ${oa.clinical_kl_grade !== undefined ? `<div style="font-size:11px;color:#888;margin-top:6px">Clinical KL: ${oa.clinical_kl_grade}</div>` : ''}
+    `;
+
+    // Implants
+    showImplantTab(currentTab);
+}
+
+function showImplantTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-tibial').className = 'tab-btn' + (tab === 'tibial' ? ' active' : '');
+    document.getElementById('tab-femoral').className = 'tab-btn' + (tab === 'femoral' ? ' active' : '');
+
+    const list = document.getElementById('implant-list');
+    const whySection = document.getElementById('why-section');
+    if (!patientData || !patientData.implant_candidates) {
+        list.innerHTML = '<div style="color:#555;font-size:12px">No data</div>';
+        return;
+    }
+    const candidates = patientData.implant_candidates[tab] || [];
+    if (candidates.length === 0) {
+        list.innerHTML = '<div style="color:#555;font-size:12px">No candidates for this component</div>';
+        whySection.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+    candidates.forEach((c, i) => {
+        const isBest = i === 0;
+        const scoreClass = c.fit_category === 'optimal' ? 'optimal' : (c.fit_category === 'acceptable' ? 'acceptable' : 'risk');
+        const mlClass = Math.abs(c.ml_mismatch_mm) <= 2 ? 'good' : (Math.abs(c.ml_mismatch_mm) <= 4 ? 'warn' : 'bad');
+        const apClass = Math.abs(c.ap_mismatch_mm) <= 2 ? 'good' : (Math.abs(c.ap_mismatch_mm) <= 4 ? 'warn' : 'bad');
+        html += `
+            <div class="implant-card ${isBest ? 'best' : ''}">
+                <div class="implant-header">
+                    <span class="implant-name">#${c.rank} ${c.manufacturer} ${c.system} ${c.size}</span>
+                    <span class="implant-score ${scoreClass}">${c.score}%</span>
+                </div>
+                <div class="mismatch">
+                    <span class="${mlClass}">ML: ${c.ml_mismatch_mm > 0 ? '+' : ''}${c.ml_mismatch_mm} mm</span>
+                    <span class="${apClass}">AP: ${c.ap_mismatch_mm > 0 ? '+' : ''}${c.ap_mismatch_mm} mm</span>
+                    <span style="color:#aaa">${c.fit_category}</span>
+                </div>
+            </div>
+        `;
+    });
+    list.innerHTML = html;
+
+    // Why box
+    const best = candidates[0];
+    if (best.explanation) {
+        whySection.style.display = 'block';
+        document.getElementById('why-content').textContent = best.explanation;
+    }
+}
+
+// ─── Event Listeners ─────────────────────────────────────────────────────
+document.getElementById('file-glb').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    document.getElementById('loading').innerHTML = '<div class="spinner"></div><div>Loading 3D model...</div>';
+    document.getElementById('loading').style.display = 'block';
+    const reader = new FileReader();
+    reader.onload = ev => loadGLB(ev.target.result);
+    reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('file-json').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => loadPatientProfile(JSON.parse(ev.target.result));
+    reader.readAsText(file);
+});
+
+// Toggle listeners
+Object.entries(structureMap).forEach(([name, tid]) => {
+    const cb = document.getElementById(tid);
+    if (cb) cb.addEventListener('change', () => {
+        for (const [mn, mesh] of Object.entries(meshes)) {
+            if (mn === name || mn.replace(/_/g, ' ') === name) mesh.visible = cb.checked;
+        }
+    });
+});
+
+// Animation
+function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+});
+</script>
+</body>
+</html>

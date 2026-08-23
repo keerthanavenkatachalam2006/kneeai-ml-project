@@ -1,0 +1,27 @@
+# Core ML/Medical
+nibabel==5.4.2
+numpy==1.26.4
+scipy==1.16.3
+scikit-image==0.26.0
+trimesh==5.0.0
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Deep Learning
+torch==2.4.0
+monai==1.4.0
+
+# Web Framework
+fastapi==0.115.0
+uvicorn==0.30.0
+python-multipart==0.0.9
+pydantic==2.9.0
+
+# 3D Export
+pygltflib==1.16.2
+
+# Visualization (dev/notebooks)
+matplotlib==3.10.8
+
+# Utilities
+tqdm==4.66.0

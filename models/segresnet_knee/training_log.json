@@ -1,0 +1,158 @@
+  {
+    "epochs": 20,
+    "best_dice": 0.6225511431694031,
+    "best_epoch": 20,
+    "total_time_min": 222.7,
+    "log": [
+      {
+        "epoch": 2,
+        "loss": 1.6191,
+        "lr": 0.000994,
+        "time_s": 697
+      },
+      {
+        "epoch": 3,
+        "loss": 1.3939,
+        "lr": 0.000976,
+        "time_s": 693
+      },
+      {
+        "epoch": 4,
+        "loss": 1.2932,
+        "lr": 0.000946,
+        "time_s": 696
+      },
+      {
+        "epoch": 5,
+        "loss": 1.2275,
+        "lr": 0.000905,
+        "time_s": 685,
+        "val_dice": 0.188,
+        "per_class": {
+          "Femur": 0.3888,
+          "Femoral Cartilage": 0.5411,
+          "Tibia": 0.0,
+          "Medial Tibial Cartilage": 0.0,
+          "Lateral Tibial Cartilage": 0.0103
+        },
+        "best": true
+      },
+      {
+        "epoch": 6,
+        "loss": 1.1632,
+        "lr": 0.000854,
+        "time_s": 691
+      },
+      {
+        "epoch": 7,
+        "loss": 1.1634,
+        "lr": 0.000794,
+        "time_s": 684
+      },
+      {
+        "epoch": 8,
+        "loss": 1.1103,
+        "lr": 0.000727,
+        "time_s": 694
+      },
+      {
+        "epoch": 9,
+        "loss": 1.0594,
+        "lr": 0.000655,
+        "time_s": 693
+      },
+      {
+        "epoch": 10,
+        "loss": 1.0682,
+        "lr": 0.000579,
+        "time_s": 683,
+        "val_dice": 0.2891,
+        "per_class": {
+          "Femur": 0.6336,
+          "Femoral Cartilage": 0.5737,
+          "Tibia": 0.2086,
+          "Medial Tibial Cartilage": 0.0285,
+          "Lateral Tibial Cartilage": 0.0011
+        },
+        "best": true
+      },
+      {
+        "epoch": 11,
+        "loss": 1.0027,
+        "lr": 0.000501,
+        "time_s": 681
+      },
+      {
+        "epoch": 12,
+        "loss": 0.9839,
+        "lr": 0.000422,
+        "time_s": 685
+      },
+      {
+        "epoch": 13,
+        "loss": 0.9169,
+        "lr": 0.000346,
+        "time_s": 699
+      },
+      {
+        "epoch": 14,
+        "loss": 0.897,
+        "lr": 0.000274,
+        "time_s": 692
+      },
+      {
+        "epoch": 15,
+        "loss": 0.8552,
+        "lr": 0.000207,
+        "time_s": 676,
+        "val_dice": 0.5248,
+        "per_class": {
+          "Femur": 0.7324,
+          "Femoral Cartilage": 0.671,
+          "Tibia": 0.8486,
+          "Medial Tibial Cartilage": 0.1473,
+          "Lateral Tibial Cartilage": 0.2247
+        },
+        "best": true
+      },
+      {
+        "epoch": 16,
+        "loss": 0.8198,
+        "lr": 0.000147,
+        "time_s": 689
+      },
+      {
+        "epoch": 17,
+        "loss": 0.7777,
+        "lr": 9.6e-05,
+        "time_s": 722
+      },
+      {
+        "epoch": 18,
+        "loss": 0.7712,
+        "lr": 5.5e-05,
+        "time_s": 716
+      },
+      {
+        "epoch": 19,
+        "loss": 0.7572,
+        "lr": 2.5e-05,
+        "time_s": 685
+      },
+      {
+        "epoch": 20,
+        "loss": 0.7389,
+        "lr": 7e-06,
+        "time_s": 684,
+        "val_dice": 0.6226,
+        "per_class": {
+          "Femur": 0.9024,
+          "Femoral Cartilage": 0.7391,
+          "Tibia": 0.9021,
+          "Medial Tibial Cartilage": 0.2036,
+          "Lateral Tibial Cartilage": 0.3655
+        },
+        "best": true
+      }
+    ]
+  }

@@ -31,11 +31,17 @@ from kneeai.imaging.volume import Volume
 from kneeai.logging import get_logger
 from kneeai.oa.classifier import OA_KL_THRESHOLD, MODEL_FILENAME, OaClassifier, severity_for
 from kneeai.oa.features import FEATURE_NAMES, OaFeatures, extract_features
+from kneeai.oa.morphometric_classifier import (
+    MorphometricOaClassifier,
+    MorphometricOaPrediction,
+    predict_oa_from_measurements,
+)
 
 __all__ = [
     "OA_DISCLAIMER",
     "OaAssessment",
     "assess_oa",
+    "assess_oa_from_measurements",
     "classifier_path",
     "load_classifier",
 ]
@@ -162,7 +168,7 @@ def _indicators(
     the decision rather than an approximation of it.
     """
     vector = features.vector()
-    standardised = classifier.binary.design(np.atleast_2d(vector))[0]
+    standardised = classifier.binary._design(np.atleast_2d(vector))[0]
     coefficients = np.asarray(classifier.binary.coefficients, dtype=np.float64)
     contributions = coefficients * standardised
 
@@ -291,3 +297,72 @@ def assess_oa(
         dataset_kl_grade=dataset_kl_grade,
         warnings=warnings,
     )
+
+
+# ---------------------------------------------------------------------------
+# Morphometric-only assessment (no trained model required)
+# ---------------------------------------------------------------------------
+
+
+def assess_oa_from_measurements(
+    measurements: dict,
+    *,
+    case_id: str = "unknown",
+    dataset_kl_grade: int | None = None,
+    threshold: float = 0.35,
+) -> dict:
+    """Assess OA using the rule-based morphometric classifier.
+
+    This is the fallback path when no trained logistic model is available.
+    It reads directly from the measurements.json payload and uses
+    literature-derived thresholds to produce a prediction.
+
+    Args:
+        measurements: The measurements.json content (full payload or measurements list).
+        case_id: Identifier for the case.
+        dataset_kl_grade: Ground-truth KL grade from the dataset, if known.
+        threshold: OA detection threshold (probability above which OA is declared).
+
+    Returns:
+        A dict matching the OaAssessment shape, suitable for writing to oa.json.
+    """
+    classifier = MorphometricOaClassifier(oa_threshold=threshold)
+    prediction = classifier.predict(measurements)
+
+    result = {
+        "available": True,
+        "case_id": case_id,
+        "oa_detected": prediction.oa_detected,
+        "probability": round(prediction.probability, 4),
+        "threshold": round(threshold, 4),
+        "predicted_kl_grade": None,  # rule-based cannot predict a single grade
+        "severity": prediction.severity,
+        "approximate_kl_range": prediction.approximate_kl_range,
+        "kl_threshold_for_oa": OA_KL_THRESHOLD,
+        "indicators": prediction.indicators,
+        "features": prediction.features_used,
+        "features_missing": prediction.features_missing,
+        "compartment_assessment": prediction.compartment_assessment,
+        "confidence_score": round(prediction.confidence_score, 3),
+        "raw_score": round(prediction.raw_score, 2),
+        "max_possible_score": round(prediction.max_possible_score, 2),
+        "model": {
+            "model_id": "morphometric_rules",
+            "version": "1.0.0",
+            "architecture": "deterministic_rule_based",
+            "task": "classification",
+            "method": "Weighted scoring on literature-derived morphometric thresholds",
+        },
+        "reference_metrics": {},
+        "dataset_kl_grade": dataset_kl_grade,
+        "unavailable_reason": None,
+        "warnings": prediction.warnings,
+        "disclaimer": prediction.disclaimer,
+        "method": (
+            "Deterministic rule-based classifier using weighted scoring across "
+            "cartilage thickness, JLCA, asymmetry, and volume features. Thresholds "
+            "derived from Eckstein et al. (2006), Wirth et al. (2013), and "
+            "Sharma et al. (2001). No model training required."
+        ),
+    }
+    return result

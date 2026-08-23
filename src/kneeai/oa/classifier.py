@@ -81,6 +81,9 @@ class LogisticModel:
         scale = np.asarray(self.scale, dtype=np.float64)
         return (x - mean) / scale
 
+    # Keep backward compat alias
+    _design = design
+
     def decision(self, x: np.ndarray) -> np.ndarray:
         z = self.design(x) @ np.asarray(self.coefficients, dtype=np.float64)
         return z + self.intercept

@@ -1,0 +1,254 @@
+{
+  "case_id": 405,
+  "source": "AI_prediction (SegResNet)",
+  "demographics": {
+    "age": 72,
+    "gender": "Female",
+    "bmi": 28.6,
+    "kl_grade": 0,
+    "knee_side": "right"
+  },
+  "segmentation": {
+    "model": "SegResNet (MONAI)",
+    "training_data": "OAIZIB-CM (404 cases)",
+    "structures_detected": {
+      "Femur": "True",
+      "Femoral Cartilage": "True",
+      "Tibia": "True",
+      "Medial Tibial Cartilage": "True",
+      "Lateral Tibial Cartilage": "True",
+      "Medial Meniscus": "True"
+    },
+    "meniscus_method": "anatomical_estimation"
+  },
+  "measurements": {
+    "femur": {
+      "extent_mm": {
+        "medial_lateral": 111.99999809265137,
+        "anterior_posterior": 140.00000381469727,
+        "superior_inferior": 140.00000381469727
+      },
+      "volume_mm3": 170769.89339478314,
+      "volume_cm3": 170.76989339478314,
+      "center_of_mass_mm": [
+        64.84710302222352,
+        76.9733945001642,
+        81.41463729924457
+      ],
+      "voxel_count": 1835353,
+      "bounding_box_voxels": {
+        "min": [
+          0,
+          0,
+          0
+        ],
+        "max": [
+          159,
+          383,
+          383
+        ]
+      },
+      "condyle_ml_width_mm": 68.59999883174896,
+      "condyle_ap_depth_mm": 52.864584773778915,
+      "condyle_measurement_slice_idx": 175,
+      "condyle_cross_section_area_mm2": 3137.0208653872196
+    },
+    "tibia": {
+      "extent_mm": {
+        "medial_lateral": 111.99999809265137,
+        "anterior_posterior": 140.00000381469727,
+        "superior_inferior": 140.00000381469727
+      },
+      "volume_mm3": 129664.22784514725,
+      "volume_cm3": 129.66422784514725,
+      "center_of_mass_mm": [
+        72.37555455263342,
+        66.23556741903687,
+        44.20947877473418
+      ],
+      "voxel_count": 1393569,
+      "bounding_box_voxels": {
+        "min": [
+          0,
+          0,
+          0
+        ],
+        "max": [
+          159,
+          383,
+          383
+        ]
+      },
+      "plateau_ml_width_mm": 61.59999895095825,
+      "plateau_ap_depth_mm": 44.114584535360336,
+      "plateau_measurement_slice_idx": 115,
+      "plateau_cross_section_area_mm2": 2452.55210839336
+    },
+    "femoral_cartilage": {
+      "thickness_mean_mm": 5.420914295167369,
+      "thickness_max_mm": 39.375001072883606,
+      "thickness_min_mm": 0.3645833432674408,
+      "thickness_std_mm": 5.1883266663307595,
+      "thickness_method": "volume_over_area",
+      "volume_mm3": 15573.637995868921,
+      "volume_cm3": 15.573637995868921,
+      "coverage_area_mm2": 2872.880320161581,
+      "coverage_pixels": 11257,
+      "voxel_count": 167378,
+      "extent_mm": {
+        "sagittal_slices": 77.69999867677689,
+        "anterior_posterior": 74.73958536982536,
+        "medial_lateral": 138.90625378489494
+      }
+    },
+    "medial_tibial_cartilage": {
+      "thickness_mean_mm": 7.374109736045024,
+      "thickness_max_mm": 37.099999368190765,
+      "thickness_min_mm": 0.699999988079071,
+      "thickness_std_mm": 6.3531179268477,
+      "thickness_method": "volume_over_area",
+      "volume_mm3": 2888.573119416833,
+      "volume_cm3": 2.888573119416833,
+      "coverage_area_mm2": 391.7182172238827,
+      "coverage_pixels": 2947,
+      "voxel_count": 31045,
+      "extent_mm": {
+        "sagittal_slices": 79.7999986410141,
+        "anterior_posterior": 140.00000381469727,
+        "medial_lateral": 138.5416704416275
+      }
+    },
+    "lateral_tibial_cartilage": {
+      "thickness_mean_mm": 5.835249219369156,
+      "thickness_max_mm": 19.59999966621399,
+      "thickness_min_mm": 0.699999988079071,
+      "thickness_std_mm": 3.817197148070783,
+      "thickness_method": "volume_over_area",
+      "volume_mm3": 1511.6974543780088,
+      "volume_cm3": 1.5116974543780088,
+      "coverage_area_mm2": 259.0630489885807,
+      "coverage_pixels": 1949,
+      "voxel_count": 16247,
+      "extent_mm": {
+        "sagittal_slices": 70.69999879598618,
+        "anterior_posterior": 76.19791874289513,
+        "medial_lateral": 135.98958703875542
+      }
+    },
+    "medial_meniscus": {
+      "thickness_mean_mm": 2.7897060610621156,
+      "regional_thickness": {
+        "anterior_mm": 4.7,
+        "body_mm": 2.19,
+        "posterior_mm": 2.11
+      },
+      "volume_mm3": 100.86046904325485,
+      "volume_cm3": 0.10086046904325485,
+      "coverage_area_mm2": 36.1545147895813,
+      "voxel_count": 1084,
+      "extent_mm": {
+        "sagittal_slices": 11.899999797344208,
+        "anterior_posterior": 26.250000715255737,
+        "medial_lateral": 3.281250089406967
+      },
+      "method": "anatomical_estimation",
+      "disclaimer": "Meniscus segmentation is based on anatomical priors from adjacent structures, not a dedicated trained model. Measurements should be interpreted with caution."
+    },
+    "derived": {
+      "medial_lateral_thickness_ratio": 1.2637180450781558,
+      "estimated_medial_joint_space_mm": 12.795024031212392,
+      "total_cartilage_volume_mm3": 19973.908569663763,
+      "total_cartilage_volume_cm3": 19.973908569663763
+    }
+  },
+  "oa_assessment": {
+    "type": "morphometric_heuristic",
+    "is_ai_prediction": false,
+    "is_clinical_diagnosis": false,
+    "morphometric_severity": "normal",
+    "approximate_kl_range": "0",
+    "severity_score": 0,
+    "indicators": [],
+    "input_values": {
+      "fc_thickness_mean_mm": 5.42,
+      "mtc_thickness_mean_mm": 7.37,
+      "ml_thickness_ratio": 1.26
+    },
+    "methodology": "Rule-based heuristic using cartilage thickness thresholds from Eckstein et al. (2006) and Wirth et al. (2013). Thickness computed as volume/projected_area (standard volumetric method).",
+    "disclaimer": "This is a morphometric pattern assessment, NOT a clinical diagnosis. Clinical KL grading is performed by radiologists on weight-bearing radiographs and cannot be reliably determined from MRI cartilage thickness alone. The clinical KL grade from the dataset metadata is shown separately in the Patient Profile.",
+    "clinical_kl_grade": 0,
+    "clinical_kl_description": "No OA (Normal)"
+  },
+  "implant_candidates": {
+    "femoral": [
+      {
+        "rank": 1,
+        "manufacturer": "Smith & Nephew",
+        "system": "LEGION",
+        "size": "2",
+        "score": 38.5,
+        "fit_category": "underhang_risk",
+        "ml_mismatch_mm": -12.1,
+        "ap_mismatch_mm": 0.1,
+        "explanation": "Smith & Nephew LEGION Size 2: ML=56.5mm, AP=53.0mm. ML width 12.1mm narrower than bone - incomplete medial-lateral coverage. AP depth matches well (+0.1mm). Overall: Undercoverage may compromise fixation."
+      },
+      {
+        "rank": 2,
+        "manufacturer": "Zimmer Biomet",
+        "system": "NexGen",
+        "size": "C",
+        "score": 32.7,
+        "fit_category": "underhang_risk",
+        "ml_mismatch_mm": -12.6,
+        "ap_mismatch_mm": -0.9,
+        "explanation": "Zimmer Biomet NexGen Size C: ML=56.0mm, AP=52.0mm. ML width 12.6mm narrower than bone - incomplete medial-lateral coverage. AP depth matches well (-0.9mm). Overall: Undercoverage may compromise fixation."
+      },
+      {
+        "rank": 3,
+        "manufacturer": "Zimmer Biomet",
+        "system": "NexGen",
+        "size": "D",
+        "score": 28.5,
+        "fit_category": "overhang_risk",
+        "ml_mismatch_mm": -9.6,
+        "ap_mismatch_mm": 3.1,
+        "explanation": "Zimmer Biomet NexGen Size D: ML=59.0mm, AP=56.0mm. ML width 9.6mm narrower than bone - incomplete medial-lateral coverage. AP depth 3.1mm larger - potential anterior notching risk. Overall: Risk of soft tissue impingement from overhang."
+      }
+    ],
+    "tibial": [
+      {
+        "rank": 1,
+        "manufacturer": "Smith & Nephew",
+        "system": "LEGION",
+        "size": "2",
+        "score": 91.4,
+        "fit_category": "optimal",
+        "ml_mismatch_mm": -1.6,
+        "ap_mismatch_mm": -0.1,
+        "explanation": "Smith & Nephew LEGION Size 2: ML=60.0mm, AP=44.0mm. ML width matches well (-1.6mm). AP depth matches well (-0.1mm). Overall: Excellent dimensional match."
+      },
+      {
+        "rank": 2,
+        "manufacturer": "Zimmer Biomet",
+        "system": "NexGen",
+        "size": "C",
+        "score": 86.4,
+        "fit_category": "acceptable",
+        "ml_mismatch_mm": -2.6,
+        "ap_mismatch_mm": -0.1,
+        "explanation": "Zimmer Biomet NexGen Size C: ML=59.0mm, AP=44.0mm. ML width 2.6mm narrower than bone - incomplete medial-lateral coverage. AP depth matches well (-0.1mm). Overall: Acceptable fit within clinical tolerance."
+      },
+      {
+        "rank": 3,
+        "manufacturer": "Stryker",
+        "system": "Triathlon",
+        "size": "2",
+        "score": 82.9,
+        "fit_category": "optimal",
+        "ml_mismatch_mm": -0.6,
+        "ap_mismatch_mm": 1.9,
+        "explanation": "Stryker Triathlon Size 2: ML=61.0mm, AP=46.0mm. ML width matches well (-0.6mm). AP depth matches well (+1.9mm). Overall: Excellent dimensional match."
+      }
+    ]
+  }
+}

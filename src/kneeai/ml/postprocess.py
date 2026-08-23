@@ -68,26 +68,6 @@ class PostProcessConfig:
     #: Islands below this physical volume are removed.
     min_component_mm3: float = 30.0
 
-    #: Separate, larger threshold for the multi-component structures.
-    #:
-    #: 30 mm³ is about 600 voxels at 0.36 mm, which is small enough that ordinary
-    #: segmentation noise survives it: an AI cartilage plate routinely arrives as
-    #: 7-9 separate islands, which marching cubes turns into 7-9 closed shells and
-    #: the viewer renders as confetti around the joint. Genuine cartilage
-    #: compartments are two orders of magnitude larger than that.
-    #:
-    #: Deliberately *not* applied by forcing a single component. The reason the
-    #: original threshold was low is sound — a worn-through plate is legitimately
-    #: bipartite, and collapsing it to its larger half erases the pathology being
-    #: measured. This raises the noise floor without capping the component count.
-    min_cartilage_component_mm3: float = 200.0
-
-    def threshold_for(self, structure: Structure) -> float:
-        """Island-removal threshold for one structure, in mm³."""
-        if structure in self.multi_component:
-            return max(self.min_component_mm3, self.min_cartilage_component_mm3)
-        return self.min_component_mm3
-
     #: Fill interior holes in these structures.
     fill_holes_for: tuple[Structure, ...] = BONE_STRUCTURES
 
@@ -304,12 +284,7 @@ def postprocess_mask(
 
     report = PostProcessReport()
     voxel_mm3 = mask.voxel_volume_mm3
-
-    def voxels_for(structure: Structure) -> int:
-        """Island threshold in voxels, from the structure's mm³ threshold."""
-        return max(
-            1, int(round(config.threshold_for(structure) / max(voxel_mm3, 1e-9)))
-        )
+    min_voxels = max(1, int(round(config.min_component_mm3 / max(voxel_mm3, 1e-9))))
 
     structures = [s for s in mask.label_map if s is not Structure.BACKGROUND]
     binaries: dict[Structure, NDArray[np.bool_]] = {
@@ -341,20 +316,16 @@ def postprocess_mask(
                         "segmentation is fragmented; review before relying on it."
                     )
         elif structure in config.multi_component:
-            current, detail = remove_small_components(
-                current, min_voxels=voxels_for(structure)
-            )
+            current, detail = remove_small_components(current, min_voxels=min_voxels)
             if detail.get("removed_components", 0) > 0:
                 report.record(
                     structure,
                     "remove_small_components",
-                    min_component_mm3=config.threshold_for(structure),
+                    min_component_mm3=config.min_component_mm3,
                     **detail,
                 )
         else:
-            current, detail = remove_small_components(
-                current, min_voxels=voxels_for(structure)
-            )
+            current, detail = remove_small_components(current, min_voxels=min_voxels)
             if detail.get("removed_components", 0) > 0:
                 report.record(structure, "remove_small_components", **detail)
 
@@ -362,7 +333,7 @@ def postprocess_mask(
             report.warn(
                 f"{structure.display_name}: post-processing removed every voxel "
                 f"(started with {original_voxels}). All predicted components were "
-                f"below {config.threshold_for(structure)} mm³."
+                f"below {config.min_component_mm3} mm³."
             )
         binaries[structure] = current
 
@@ -380,10 +351,7 @@ def postprocess_mask(
             parameters={
                 "operation": "postprocess_mask",
                 "min_component_mm3": config.min_component_mm3,
-                "min_cartilage_component_mm3": config.min_cartilage_component_mm3,
-                "min_component_voxels": {
-                    s.value: voxels_for(s) for s in structures
-                },
+                "min_component_voxels": min_voxels,
                 "actions": report.actions,
             },
             notes="mask cleanup prior to surface reconstruction",

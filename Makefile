@@ -113,6 +113,10 @@ oa-train: ## Fit the OA classifier on ground-truth masks vs the cohort's KL grad
 oa-train-honest: ## Refit and score on the model's OWN masks (needs evaluate-model first)
 	$(BIN)/python scripts/train_oa_classifier.py --predicted-masks artifacts/val_predictions
 
+.PHONY: backfill
+backfill: ## Add oa.json + robotic_readiness.json to existing cases (no inference)
+	$(BIN)/python scripts/backfill_case.py
+
 .PHONY: notebook
 notebook: ## Regenerate the Colab training notebook
 	$(BIN)/python scripts/make_colab_notebook.py

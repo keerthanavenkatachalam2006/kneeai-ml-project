@@ -136,6 +136,30 @@ make web              # dashboard on http://localhost:3000
 
 Open <http://localhost:3000>.
 
+### 3b. Or upload your own scan
+
+The dashboard's first step is **Upload scan**. Drop in a NIfTI (`.nii`, `.nii.gz`),
+a DICOM series as a `.zip`, or a single `.dcm`, pick the operative side, and the
+whole pipeline runs on a background worker with a pollable progress bar. Roughly
+4 minutes on CPU, one upload at a time.
+
+What each input does:
+
+| Input | What happens |
+|---|---|
+| Knee MR volume | full pipeline: segmentation → 3D → measurements → OA verdict → plan → readiness |
+| CT volume | stored and validated, segmentation **refused** — the model card declares MR and cross-modality use is unvalidated |
+| 2D radiograph | stored, then stopped with a reason: every model here is 3D, and no KL-graded radiograph dataset is present to train a 2D one |
+| Unknown side | segmentation, measurements and the OA verdict still run; implant matching, planning and simulation are withheld |
+
+Cases produced before the OA and readiness stages existed can be brought up to date
+without re-running the network, since both are pure functions of artefacts already on
+disk:
+
+```bash
+make backfill
+```
+
 ### 4. Walk the demo
 
 1. Pick a case from the selector. The badge shows whether the geometry is

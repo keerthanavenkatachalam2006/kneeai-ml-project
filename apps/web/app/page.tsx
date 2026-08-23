@@ -80,6 +80,9 @@ export default function Dashboard() {
   const [viewerKey, setViewerKey] = useState(0);
   const [pendingUpload, setPendingUpload] = useState<string | null>(null);
 
+  /** Lets a surgeon open the plan on a knee the classifier called non-arthritic. */
+  const [indicationOverride, setIndicationOverride] = useState(false);
+
   const glRef = useRef<{ gl: any; scene: any; camera: any } | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -115,6 +118,9 @@ export default function Dashboard() {
     setProgress(null);
     setCommands(null);
     setStep("case");
+    // Must reset per case: an override carried from a previous knee would silently
+    // unlock the plan on a knee nobody has assessed.
+    setIndicationOverride(false);
     (async () => {
       try {
         const [detail, state] = await Promise.all([
@@ -223,6 +229,15 @@ export default function Dashboard() {
   const result = summary?.result;
   const dice = model?.reference_metrics?.dice_per_structure ?? null;
 
+  /**
+   * True when the OA classifier ran and found no osteoarthritis.
+   *
+   * `oa_detected === false` specifically, not falsy: `null` means the assessment
+   * could not be produced, and an absent verdict is not the same as a negative one.
+   * Gating on the absent case would block every pre-OA case in the library.
+   */
+  const notIndicated = summary?.oa?.available === true && summary.oa.oa_detected === false;
+
   const steps: Step[] = useMemo(
     () => [
       {
@@ -276,9 +291,17 @@ export default function Dashboard() {
       {
         id: "plan",
         label: "Implant & plan",
-        hint: `${summary?.plan?.cuts.length ?? 0} resection cuts`,
-        ready: Boolean(summary?.plan),
-        blockedReason: "No surgical plan for this case",
+        hint: notIndicated
+          ? "Not indicated — no osteoarthritis"
+          : `${summary?.plan?.cuts.length ?? 0} resection cuts`,
+        // Arthroplasty treats osteoarthritis. With no OA detected there is no
+        // indication, so the plan is withheld by default rather than presented as
+        // a recommendation. Overridable: the classifier is weak (AUROC 0.567) and
+        // must not be able to veto a surgeon.
+        ready: Boolean(summary?.plan) && (!notIndicated || indicationOverride),
+        blockedReason: notIndicated
+          ? "No osteoarthritis detected — arthroplasty is not indicated. Override below to inspect the geometry anyway."
+          : "No surgical plan for this case",
       },
       {
         id: "readiness",
@@ -295,12 +318,14 @@ export default function Dashboard() {
       {
         id: "simulate",
         label: "Approve & simulate",
-        hint: "Surgeon gate, then robot simulation",
-        ready: Boolean(summary?.plan),
-        blockedReason: "Requires a surgical plan",
+        hint: notIndicated ? "Not indicated — no osteoarthritis" : "Surgeon gate, then robot simulation",
+        ready: Boolean(summary?.plan) && (!notIndicated || indicationOverride),
+        blockedReason: notIndicated
+          ? "No osteoarthritis detected — nothing to operate on. Override below if you disagree with the classifier."
+          : "Requires a surgical plan",
       },
     ],
-    [summary, result],
+    [summary, result, notIndicated, indicationOverride],
   );
 
   return (
@@ -765,11 +790,48 @@ export default function Dashboard() {
             {step === "measure" && <MeasurementsPanel data={summary.measurements} />}
 
             {step === "oa" && (
-              <OaPanel
-                data={summary.measurements}
-                oa={summary.oa}
-                klGrade={summary.kl_grade ?? null}
-              />
+              <>
+                <OaPanel
+                  data={summary.measurements}
+                  oa={summary.oa}
+                  klGrade={summary.kl_grade ?? null}
+                />
+                {notIndicated && summary.plan && (
+                  <div className="card border-amber-700">
+                    <div className="card-head">
+                      <span className="card-title text-amber-300">
+                        Arthroplasty not indicated
+                      </span>
+                    </div>
+                    <div className="card-body">
+                      <p className="text-[11px] leading-relaxed text-slate-300">
+                        A total knee replacement treats osteoarthritis. No
+                        osteoarthritis was detected here, so the implant, resection
+                        plan and robot simulation steps are{" "}
+                        <strong>withheld</strong> — presenting them would imply a
+                        recommendation that does not follow from the assessment.
+                      </p>
+                      <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                        The plan was still computed and is retained as reference
+                        geometry. This classifier is weak (validation AUROC 0.567 on
+                        11 cases), so it must not be able to veto a clinician.
+                      </p>
+                      <label className="mt-3 flex cursor-pointer items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={indicationOverride}
+                          onChange={(e) => setIndicationOverride(e.target.checked)}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-amber-500"
+                        />
+                        <span className="text-[11px] leading-snug text-amber-300">
+                          I disagree with the assessment — unlock the plan and
+                          simulation steps for this case.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {step === "readiness" && <ReadinessPanel readiness={summary.readiness} />}

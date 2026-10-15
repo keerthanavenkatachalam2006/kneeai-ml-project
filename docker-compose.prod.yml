@@ -1,0 +1,84 @@
+# =================================================================
+# KneeAI – Production Docker Compose (AWS EC2 / any Linux host)
+# =================================================================
+# Usage:
+#   1. Copy .env.example → .env.docker  and fill in values
+#   2. docker compose -f docker-compose.prod.yml build
+#   3. docker compose -f docker-compose.prod.yml up -d
+#
+# Public ports:
+#   Backend API  → http://<host>:8000     (Swagger: /docs)
+#   Frontend UI  → http://<host>:3000
+# =================================================================
+
+services:
+
+  # ── FastAPI Backend + AI Pipeline ──────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kneeai-backend:latest
+    container_name: kneeai-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.docker
+    environment:
+      - KNEEAI_ENV=production
+      - PYTHONPATH=/app/src:/app
+    volumes:
+      - kneeai-data:/app/data
+      - kneeai-models:/app/models
+      - kneeai-artifacts:/app/artifacts
+      - kneeai-results:/app/results
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - kneeai-net
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+
+  # ── Next.js Frontend ──────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Replace with your EC2 public IP or domain
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    image: kneeai-frontend:latest
+    container_name: kneeai-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - kneeai-net
+
+networks:
+  kneeai-net:
+    driver: bridge
+
+volumes:
+  kneeai-data:
+    driver: local
+  kneeai-models:
+    driver: local
+  kneeai-artifacts:
+    driver: local
+  kneeai-results:
+    driver: local

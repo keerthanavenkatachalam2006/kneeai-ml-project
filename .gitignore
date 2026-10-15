@@ -38,6 +38,11 @@ data/processed/
 artifacts/
 results/*.glb
 
+# ---- Keep visualization outputs ----
+!results/visualizations/
+!results/validation_report.json
+!results/validation_summary.txt
+
 # ---- Model checkpoints (large binaries) ----
 models/**/*.pth
 models/**/*.pt

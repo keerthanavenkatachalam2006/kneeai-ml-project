@@ -148,6 +148,47 @@ KneeAI/
 - **3D**: Marching cubes → Trimesh → GLB export → Three.js rendering
 - **Data**: NIfTI format, ZIP-based lazy extraction
 
+## Docker & AWS EC2 Deployment
+
+### Quick Start (Docker)
+
+```bash
+# Build and start all services locally
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+
+# Backend → http://localhost:8000
+# Swagger → http://localhost:8000/docs
+# Frontend → http://localhost:3000
+```
+
+### AWS EC2 Deployment
+
+See full guide: [`deploy/AWS_EC2_DEPLOYMENT.md`](deploy/AWS_EC2_DEPLOYMENT.md)
+
+```bash
+# 1. Launch t3.xlarge EC2 (Ubuntu 22.04), open ports 8000 + 3000
+# 2. SSH in and run the bootstrap:
+curl -sSL https://raw.githubusercontent.com/shamsundarsk/MR/main/deploy/ec2_setup.sh | bash
+# 3. Visit http://<EC2-PUBLIC-IP>:8000/docs
+```
+
+## Visualizations
+
+7 analytical plots generated in `results/visualizations/`:
+
+| Plot | Description |
+|------|-------------|
+| `training_curves.png` | Loss, LR, per-class Dice over 20 epochs |
+| `validation_dice_boxplot.png` | Dice distribution across 102 test cases |
+| `confusion_matrix.png` | OA classification confusion matrix |
+| `roc_pr_curves.png` | ROC & Precision-Recall curves (AUC) |
+| `measurement_error.png` | AI vs GT measurement MAE bar chart |
+| `dice_heatmap.png` | Per-case × per-structure Dice heatmap |
+| `feature_importance.png` | OA morphometric feature importance |
+
+Regenerate: `python scripts/generate_visualizations.py`
+
 ## License
 
 Dataset: CC BY-NC 4.0 (OAIZIB-CM)
